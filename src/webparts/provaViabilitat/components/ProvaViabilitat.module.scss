@@ -1,0 +1,95 @@
+.prova {
+  font-family: "ITC Franklin Gothic Std", "Franklin Gothic Medium", "Franklin Gothic", Arial, sans-serif;
+  color: #1a1a1a;
+  padding: 16px;
+  background: #ffffff;
+}
+
+.titol {
+  margin: 0 0 12px;
+  font-size: 22px;
+}
+
+.botons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.boto {
+  background: #eb263c;
+  color: #ffffff;
+  border: 0;
+  border-radius: 4px;
+  padding: 10px 18px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+
+  &:disabled {
+    background: #8c8c8c;
+    cursor: not-allowed;
+  }
+}
+
+.escena {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  background: #000000;
+}
+
+.video {
+  display: block;
+  max-width: 100%;
+  width: 640px;
+  transform: scaleX(-1);
+}
+
+.superposicio {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: scaleX(-1);
+  pointer-events: none;
+}
+
+.missatge {
+  margin: 8px 0;
+  font-size: 16px;
+}
+
+.error {
+  color: #b3261e;
+  font-weight: bold;
+}
+
+.diagnostic {
+  margin-top: 16px;
+  padding: 12px;
+  background: #f2f2f2;
+  border-radius: 4px;
+  font-size: 14px;
+
+  h3 {
+    margin: 0 0 8px;
+    font-size: 16px;
+  }
+
+  ul {
+    margin: 0 0 8px;
+    padding-left: 20px;
+  }
+}
+
+.ok {
+  color: #1e8e3e;
+  font-weight: bold;
+}
+
+.ko {
+  color: #b3261e;
+  font-weight: bold;
+}
