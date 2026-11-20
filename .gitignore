@@ -3,46 +3,37 @@ logs
 *.log
 npm-debug.log*
 
-# Dependency directories
-node_modules
+# Dependències
+node_modules/
 
-# Build generated files
-dist
-lib
-lib-dts
-lib-commonjs
-lib-esm
-jest-output
-release
-solution
-temp
+# Fitxers generats pel build
+dist/
+lib/
+lib-dts/
+lib-commonjs/
+lib-esm/
+jest-output/
+release/
+sharepoint/solution/
+solution/
+temp/
+.heft/
 *.sppkg
-.heft
 
-# Coverage directory used by tools like istanbul
+# Paquets locals per provar
+paquets/
+
+# Cobertura de tests
 coverage
 
-# OSX
+# SO / editor
 .DS_Store
-
-# Visual Studio files
+Thumbs.db
 .ntvs_analysis.dat
 .vs
 bin
 obj
 
-# Resx Generated Code
+# Codi generat (recursos i estils)
 *.resx.ts
-
-# Styles Generated Code
 *.scss.ts
-node_modules/
-lib/
-lib-commonjs/
-lib-esm/
-dist/
-temp/
-release/
-sharepoint/solution/
-.heft/
-Thumbs.db

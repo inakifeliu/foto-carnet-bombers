@@ -1,24 +1,24 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
   "solution": {
-    "name": "foto-carnet-bombers-client-side-solution",
+    "name": "Foto carnet Bombers de Barcelona",
     "id": "a44e727f-a43d-4197-ac11-017893da7337",
     "version": "1.0.0.0",
     "includeClientSideAssets": true,
     "skipFeatureDeployment": true,
     "developer": {
-      "name": "",
+      "name": "Bombers de Barcelona (SPCPEIS)",
       "websiteUrl": "",
       "privacyUrl": "",
       "termsOfUseUrl": "",
-      "mpnId": "Undefined-1.24.2"
+      "mpnId": ""
     },
     "metadata": {
       "shortDescription": {
-        "default": "foto-carnet-bombers description"
+        "default": "Foto de carnet amb uniforme per als Bombers de Barcelona."
       },
       "longDescription": {
-        "default": "foto-carnet-bombers description"
+        "default": "Web part que guia pas a pas la persona usuària per fer-se la foto de carnet amb l'uniforme: captura amb la càmera, comprovació de qualitat feta íntegrament al navegador, retall al format 35 x 45 mm i desat local de la imatge abans de pujar-la al formulari. No s'envia cap dada a tercers."
       },
       "screenshotPaths": [],
       "videoUrl": "",
@@ -26,8 +26,8 @@
     },
     "features": [
       {
-        "title": "foto-carnet-bombers Feature",
-        "description": "The feature that activates elements of the foto-carnet-bombers solution.",
+        "title": "Foto carnet Bombers de Barcelona",
+        "description": "Activa el web part de la foto de carnet amb uniforme dels Bombers de Barcelona.",
         "id": "21932dd9-bbe3-4be8-bb9c-f80ebdfa010b",
         "version": "1.0.0.0"
       }
