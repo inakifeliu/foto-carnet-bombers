@@ -2,6 +2,8 @@
 // no a :root, perquè vivim dins d'una pàgina de SharePoint.
 .arrel {
   --bcn-vermell: #eb263c;
+  // Vermell per a TEXT sobre blanc (5,6:1, WCAG AA). El vermell de marca (4,3:1) només per a farciments i vores.
+  --bcn-vermell-text: #c91f33;
   --bcn-groc: #fcb438;
   --bcn-negre: #000000;
   --bcn-blanc: #ffffff;
@@ -150,13 +152,16 @@
 }
 
 .botoPrimari {
+  // Text blanc sobre #EB263C = 4,31:1: només compleix WCAG AA com a text gran (>= 18,66 px en negreta).
+  font-size: 19px;
+  font-weight: 700;
   background: var(--bcn-vermell);
   border: 2px solid var(--bcn-vermell);
   color: var(--bcn-blanc);
 
   &:hover:not(:disabled) {
-    background: #c91f33;
-    border-color: #c91f33;
+    background: var(--bcn-vermell-text);
+    border-color: var(--bcn-vermell-text);
   }
 }
 
@@ -389,7 +394,7 @@
   margin: 4px 0 0;
   font-size: 16px;
   font-weight: 700;
-  color: var(--bcn-vermell);
+  color: var(--bcn-vermell-text);
 }
 
 .previa {
