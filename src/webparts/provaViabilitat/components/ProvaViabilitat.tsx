@@ -2,7 +2,7 @@ import * as React from 'react';
 import type { FaceLandmarker } from '@mediapipe/tasks-vision';
 
 import styles from './ProvaViabilitat.module.scss';
-import { carregarFaceLandmarker, detectarFuncionalitats, type IFuncionalitats } from './mediapipe';
+import { carregarFaceLandmarker, crearLandmarker, detectarFuncionalitats, type Delegat, type IFuncionalitats } from './mediapipe';
 import { missatgeErrorCamera, missatgeErrorDesar } from './errors';
 
 const MAX_VIOLACIONS: number = 20;
@@ -37,6 +37,14 @@ export default function ProvaViabilitat(): React.ReactElement {
   const ultimaAnalisiRef = React.useRef<number>(0);
   const bucleActiuRef = React.useRef<boolean>(false);
   const desmuntatRef = React.useRef<boolean>(false);
+  // Promesa de la càrrega en curs (o acabada): evita crear un segon landmarker si es torna a
+  // obrir la càmera mentre el model encara es carrega.
+  const carregaRef = React.useRef<Promise<void> | undefined>(undefined);
+  // Es compta cada alliberament (desmuntatge/pagehide): una càrrega d'una generació anterior es tanca.
+  const generacioRef = React.useRef<number>(0);
+  const delegatRef = React.useRef<Delegat | undefined>(undefined);
+  // Permet que recreaAmbCpu reprengui el bucle sense dependència circular entre funcions.
+  const reprenAnalisiRef = React.useRef<() => void>(() => undefined);
 
   const [funcionalitats] = React.useState<IFuncionalitats>(() => detectarFuncionalitats());
   const [cameraActiva, setCameraActiva] = React.useState<boolean>(false);
@@ -73,18 +81,59 @@ export default function ProvaViabilitat(): React.ReactElement {
     }
   }, []);
 
-  // Neteja en desmuntar: aturar la càmera i tancar el model.
+  // Allibera càmera (pistes), model i bucle d'animació. Compartit pel desmuntatge i per pagehide.
+  const alliberaTot = React.useCallback((): void => {
+    generacioRef.current += 1;
+    aturarCamera();
+    carregaRef.current = undefined;
+    delegatRef.current = undefined;
+    if (landmarkerRef.current) {
+      landmarkerRef.current.close();
+      landmarkerRef.current = undefined;
+    }
+  }, [aturarCamera]);
+
+  // Neteja en desmuntar i en tancar/abandonar la pàgina (pagehide).
   React.useEffect(() => {
     desmuntatRef.current = false;
+    window.addEventListener('pagehide', alliberaTot);
     return () => {
       desmuntatRef.current = true;
-      aturarCamera();
-      if (landmarkerRef.current) {
-        landmarkerRef.current.close();
-        landmarkerRef.current = undefined;
-      }
+      window.removeEventListener('pagehide', alliberaTot);
+      alliberaTot();
     };
-  }, [aturarCamera]);
+  }, [alliberaTot]);
+
+  const executar = (promesa: Promise<void>): void => {
+    promesa.catch((e) => setErrorsModel((anteriors) => anteriors.concat(String(e))));
+  };
+
+  const recreaAmbCpu = (causa: unknown): void => {
+    bucleActiuRef.current = false;
+    const generacio = generacioRef.current;
+    const gpu = landmarkerRef.current;
+    landmarkerRef.current = undefined;
+    delegatRef.current = 'CPU'; // evita reintents: només es recrea una vegada
+    if (gpu) {
+      gpu.close();
+    }
+    setErrorsModel((anteriors) =>
+      anteriors.concat('detectForVideo ha fallat amb GPU, es recrea amb CPU: ' + String(causa)).slice(-5)
+    );
+    executar(
+      crearLandmarker('CPU').then((cpu) => {
+        if (desmuntatRef.current || generacio !== generacioRef.current) {
+          cpu.close();
+          return;
+        }
+        landmarkerRef.current = cpu;
+        setDelegat('CPU');
+        if (streamRef.current) {
+          reprenAnalisiRef.current();
+        }
+      })
+    );
+  };
 
   const analitzarFotograma = (): void => {
     const canvas = canvasRef.current;
@@ -112,6 +161,11 @@ export default function ProvaViabilitat(): React.ReactElement {
         });
       });
     } catch (e) {
+      if (delegatRef.current === 'GPU') {
+        // detectForVideo ha fallat amb GPU: es recrea una sola vegada amb CPU.
+        recreaAmbCpu(e);
+        return;
+      }
       setErrorsModel((anteriors) => anteriors.concat('detectForVideo: ' + String(e)).slice(-5));
       bucleActiuRef.current = false;
     }
@@ -134,41 +188,48 @@ export default function ProvaViabilitat(): React.ReactElement {
     rafRef.current = window.requestAnimationFrame(bucle);
   };
 
-  const desarLandmarker = (landmarker: FaceLandmarker): void => {
-    landmarkerRef.current = landmarker;
-  };
+  reprenAnalisiRef.current = iniciarAnalisi;
 
-  const executar = (promesa: Promise<void>): void => {
-    promesa.catch((e) => setErrorsModel((anteriors) => anteriors.concat(String(e))));
-  };
-
-  const carregarModel = async (): Promise<void> => {
+  const carregarModel = (): Promise<void> => {
     if (landmarkerRef.current) {
       iniciarAnalisi();
-      return;
+      return Promise.resolve();
     }
-    setEstatModel('Carregant…');
-    const inici: number = performance.now();
-    try {
-      const { landmarker, delegat: delegatUsat, avisos } = await carregarFaceLandmarker();
-      if (desmuntatRef.current) {
-        landmarker.close();
-        return;
-      }
-      desarLandmarker(landmarker);
-      setDelegat(delegatUsat);
-      setTempsCarrega(`${Math.round(performance.now() - inici)} ms`);
-      setEstatModel('Carregat');
-      if (avisos.length > 0) {
-        setErrorsModel((anteriors) => anteriors.concat(avisos));
-      }
-      if (streamRef.current) {
+    if (!carregaRef.current) {
+      setEstatModel('Carregant…');
+      const inici: number = performance.now();
+      const generacio = generacioRef.current;
+      carregaRef.current = carregarFaceLandmarker().then(
+        ({ landmarker, delegat: delegatUsat, avisos }) => {
+          if (desmuntatRef.current || generacio !== generacioRef.current || landmarkerRef.current) {
+            // Orfe: component desmuntat, pàgina abandonada o ja n'hi ha un altre.
+            landmarker.close();
+            return;
+          }
+          landmarkerRef.current = landmarker;
+          delegatRef.current = delegatUsat;
+          setDelegat(delegatUsat);
+          setTempsCarrega(`${Math.round(performance.now() - inici)} ms`);
+          setEstatModel('Carregat');
+          if (avisos.length > 0) {
+            setErrorsModel((anteriors) => anteriors.concat(avisos));
+          }
+        },
+        (e: unknown) => {
+          // Permet reintentar en tornar a obrir la càmera.
+          if (generacio === generacioRef.current) {
+            carregaRef.current = undefined;
+          }
+          setEstatModel('Error');
+          setErrorsModel((anteriors) => anteriors.concat(String(e)));
+        }
+      );
+    }
+    return carregaRef.current.then(() => {
+      if (landmarkerRef.current && streamRef.current) {
         iniciarAnalisi();
       }
-    } catch (e) {
-      setEstatModel('Error');
-      setErrorsModel((anteriors) => anteriors.concat('Càrrega de MediaPipe: ' + String(e)));
-    }
+    });
   };
 
   const obrirCamera = async (): Promise<void> => {
