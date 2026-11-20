@@ -10,7 +10,9 @@
     "clean": "heft clean",
     "eject-webpack": "heft eject-webpack",
     "start": "heft start --clean",
-    "verifica-paquet": "node scripts/verifica-paquet.js"
+    "verifica-paquet": "node scripts/verifica-paquet.js",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@fluentui/react": "^8.106.4",
@@ -39,6 +41,7 @@
     "css-loader": "~7.1.2",
     "eslint": "9.37.0",
     "eslint-plugin-react-hooks": "5.2.0",
+    "prettier": "^3.6.2",
     "typescript": "~5.8.0"
   },
   "overrides": {

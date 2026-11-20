@@ -62,9 +62,7 @@ export const P2Matricula: React.FC = () => {
           <Boto variant="secundari" onClick={() => dispatch({ tipus: 'ENRERE' })}>
             {t('nav.enrere')}
           </Boto>
-          <Boto type="submit">
-            {t('p2.continuar')}
-          </Boto>
+          <Boto type="submit">{t('p2.continuar')}</Boto>
         </div>
       </form>
     </section>

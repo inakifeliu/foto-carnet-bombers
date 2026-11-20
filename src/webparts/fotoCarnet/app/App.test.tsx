@@ -45,7 +45,7 @@ function tecla(element: Element, key: string, shiftKey = false): void {
 }
 
 describe('App: focus del modal de P6', () => {
-  it("en entrar a P6 el modal conserva el focus (App no el roba) i atrapa el Tab", () => {
+  it('en entrar a P6 el modal conserva el focus (App no el roba) i atrapa el Tab', () => {
     const { div, root } = monta(CONFIG_PER_DEFECTE, true);
     const dialeg = div.querySelector('[aria-modal="true"]') as HTMLElement;
     expect(dialeg).not.toBeNull();
@@ -53,7 +53,9 @@ describe('App: focus del modal de P6', () => {
     expect(document.activeElement).not.toBe(div.querySelector('main'));
 
     // Tab des de l'últim element torna al primer.
-    const focalitzables = Array.prototype.slice.call(dialeg.querySelectorAll('a[href], button:not([disabled])')) as HTMLElement[];
+    const focalitzables = Array.prototype.slice.call(
+      dialeg.querySelectorAll('a[href], button:not([disabled])')
+    ) as HTMLElement[];
     const ultim = focalitzables[focalitzables.length - 1];
     ultim.focus();
     tecla(ultim, 'Tab');
@@ -66,7 +68,7 @@ describe('App: focus del modal de P6', () => {
     div.remove();
   });
 
-  it("Esc tanca el modal i el focus torna al botó «Mostrar les instruccions»", () => {
+  it('Esc tanca el modal i el focus torna al botó «Mostrar les instruccions»', () => {
     const { div, root } = monta(CONFIG_PER_DEFECTE, true);
     const dialeg = div.querySelector('[aria-modal="true"]') as HTMLElement;
     tecla(document.activeElement as Element, 'Escape');
@@ -80,7 +82,7 @@ describe('App: focus del modal de P6', () => {
     div.remove();
   });
 
-  it('plantilla no https: P6 mostra el missatge d\'error de configuració en lloc de l\'enllaç', () => {
+  it("plantilla no https: P6 mostra el missatge d'error de configuració en lloc de l'enllaç", () => {
     const config: IConfig = { ...CONFIG_PER_DEFECTE, forms: { urlPlantilla: 'http://f/?r={MATRICULA}' } };
     const { div, root } = monta(config, true);
     expect(div.textContent).toContain(t('p6.urlNoHttps'));

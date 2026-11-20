@@ -21,7 +21,9 @@ describe('detectaFuncionalitats', () => {
   });
 
   it('incompatible sense getUserMedia', () => {
-    expect(detectaFuncionalitats({ mediaDevices: undefined, webAssembly: {}, teWebGL2: () => true }).compatible).toBe(false);
+    expect(detectaFuncionalitats({ mediaDevices: undefined, webAssembly: {}, teWebGL2: () => true }).compatible).toBe(
+      false
+    );
     expect(detectaFuncionalitats({ mediaDevices: {}, webAssembly: {}, teWebGL2: () => true }).getUserMedia).toBe(false);
   });
 

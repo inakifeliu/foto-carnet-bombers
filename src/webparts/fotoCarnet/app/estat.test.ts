@@ -50,7 +50,11 @@ describe('reductor', () => {
   });
 
   it('desa la matrícula i la foto triada', () => {
-    const e = aplica(estatInicial(true), { tipus: 'DESA_MATRICULA', matricula: '9999' }, { tipus: 'TRIA_FOTO', index: 2 });
+    const e = aplica(
+      estatInicial(true),
+      { tipus: 'DESA_MATRICULA', matricula: '9999' },
+      { tipus: 'TRIA_FOTO', index: 2 }
+    );
     expect(e.matricula).toBe('9999');
     expect(e.fotoTriada).toBe(2);
   });
@@ -69,7 +73,7 @@ describe('reductor', () => {
     expect(reductor(estatInicial(false), { tipus: 'REINICIA' }).pantalla).toBe('NoCompatible');
   });
 
-  it('és pur: no muta l\'estat d\'entrada', () => {
+  it("és pur: no muta l'estat d'entrada", () => {
     const e = estatInicial(true);
     const copia = { ...e };
     reductor(e, { tipus: 'ENDAVANT' });

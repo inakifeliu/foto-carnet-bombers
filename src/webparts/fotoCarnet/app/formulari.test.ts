@@ -36,9 +36,11 @@ describe('validaMatricula', () => {
   });
 
   it('rebutja matrícules que no són segures com a nom de fitxer', () => {
-    ['a/b', 'a\\b', 'a:b', 'a*b', 'a?b', 'a"b', 'a<b', 'a>b', 'a|b', 'a..b', '..', '.a', 'a.', 'CON', 'nul.x'].forEach((m) => {
-      expect(validaMatricula(m, '.*').valida).toBe(false);
-    });
+    ['a/b', 'a\\b', 'a:b', 'a*b', 'a?b', 'a"b', 'a<b', 'a>b', 'a|b', 'a..b', '..', '.a', 'a.', 'CON', 'nul.x'].forEach(
+      (m) => {
+        expect(validaMatricula(m, '.*').valida).toBe(false);
+      }
+    );
     expect(validaMatricula('A-12_3', '.*').valida).toBe(true);
   });
 
@@ -78,7 +80,7 @@ describe('construeixUrlForms', () => {
     expect(construeixUrlForms('https://f/{MATRICULA}-{MATRICULA}', '7')).toBe('https://f/7-7');
   });
 
-  it("rebutja plantilles que no són https: (http, javascript, data, relatives)", () => {
+  it('rebutja plantilles que no són https: (http, javascript, data, relatives)', () => {
     expect(construeixUrlForms('http://f/?r={MATRICULA}', '1')).toBeUndefined();
     // eslint-disable-next-line no-script-url
     expect(construeixUrlForms('javascript:alert({MATRICULA})', '1')).toBeUndefined();

@@ -58,12 +58,12 @@ Configuració efectiva = **valors per defecte** (`src/webparts/fotoCarnet/config
 
 Panell de propietats:
 
-| Camp | Descripció |
-|---|---|
-| URL plantilla del Forms | URL `https` amb el marcador `{MATRICULA}`, que se substitueix per la matrícula codificada |
-| Expressió regular de la matrícula | Per defecte `^[0-9]{4,6}$`; s'aplica com a coincidència completa |
-| Resolució (ppp) | 300 o 600 |
-| Configuració avançada (JSON) | Qualsevol clau de `config.default.json` (llindars, pesos de puntuació, `maxFotos`, `captura`, `sortida`…) |
+| Camp                              | Descripció                                                                                                |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| URL plantilla del Forms           | URL `https` amb el marcador `{MATRICULA}`, que se substitueix per la matrícula codificada                 |
+| Expressió regular de la matrícula | Per defecte `^[0-9]{4,6}$`; s'aplica com a coincidència completa                                          |
+| Resolució (ppp)                   | 300 o 600                                                                                                 |
+| Configuració avançada (JSON)      | Qualsevol clau de `config.default.json` (llindars, pesos de puntuació, `maxFotos`, `captura`, `sortida`…) |
 
 Exemple de JSON avançat: `{"maxFotos": 2, "llindars": {"yawMax": 10}}`.
 
@@ -77,7 +77,7 @@ La configuració fusionada es **valida** contra la forma i els tipus de `config.
 
 ## Telemetria de MediaPipe: parxe i guarda de build
 
-`@mediapipe/tasks-vision@1.2.3` (`vision_bundle.mjs`/`.cjs`/`.js`) inclou una classe de *logging* que **sempre** es construeix amb la tasca: crea un `setInterval` de 60 s i fa un `POST` a `https://odml.pa.googleapis.com/v1/log` amb una `x-goog-api-key`. L'especificació (§5) prohibeix qualsevol telemetria o petició externa, i el proxy corporatiu/CSP tampoc ho permetrien.
+`@mediapipe/tasks-vision@1.2.3` (`vision_bundle.mjs`/`.cjs`/`.js`) inclou una classe de _logging_ que **sempre** es construeix amb la tasca: crea un `setInterval` de 60 s i fa un `POST` a `https://odml.pa.googleapis.com/v1/log` amb una `x-goog-api-key`. L'especificació (§5) prohibeix qualsevol telemetria o petició externa, i el proxy corporatiu/CSP tampoc ho permetrien.
 
 - **Parxe**: el loader de Webpack `config/mediapipe-sense-telemetria.js` (registrat a `config/spfx-customize-webpack.js`, `enforce: 'pre'`) reescriu el bundle en compilar: elimina l'interval, converteix `flush()` en un no-op, impedeix que la cua s'ompli i buida la cadena de la URL. S'ha triat un loader en lloc de `patch-package` perquè s'aplica sempre en compilar (no depèn que s'executi `postinstall`, com passa amb `npm ci --ignore-scripts` o en CI), cobreix les tres variants del bundle i **falla el build en alt** si el patró no es troba (per exemple en pujar de versió de MediaPipe), en lloc de deixar passar la telemetria en silenci.
 - **Guarda**: `scripts/verifica-paquet.js` s'executa al final de `npm run build`, obre el `.sppkg` (zip) i falla si als fitxers de text hi troba `googleapis`, `odml.` o `google-analytics` (excepte l'identificador de tipus protobuf `type.googleapis.com/`, que no és cap petició) o qualsevol URL `http(s)://` d'un host fora de la llista permesa (documentada al mateix script: espais de noms XML/SVG, `forms.office.com` de la plantilla per defecte, etc.). El loader JS del WASM (Emscripten) només té URLs en comentaris; s'identifica per SHA-256 i s'hi comprova després d'eliminar-ne els comentaris. Els binaris (`.wasm`, `.task`) no s'inspeccionen: no poden fer xarxa pel seu compte.
@@ -94,17 +94,17 @@ La configuració fusionada es **valida** contra la forma i els tipus de `config.
 
 Mentre no hi hagi resposta es fan servir aquests valors (editables via configuració):
 
-| # | Pregunta | Valor provisional |
-|---|---|---|
-| D1 | Format de la matrícula | `^[0-9]{4,6}$` (coincidència completa; ha de ser segura com a nom de fitxer) |
-| D2 | Si `matricula.jpg` ja existeix al destí | Sobreescriure (la biblioteca guarda l'historial de versions) |
-| D5 | Resolució de sortida | 300 ppp (600 ppp disponible) |
-| D6 | Webcams dels parcs | ≥ 720p |
-| D8 | Text RGPD de P0 | Pendent del DPD |
-| D9 | Ulleres graduades | Sí, sense reflexos |
-| D10 | Validació matrícula ↔ usuari | No, a la primera versió |
-| D11 | Qui desplega el `.sppkg` | A coordinar amb l'IMI |
-| D12 | Pujada directa a biblioteca | No a la v1 |
+| #   | Pregunta                                | Valor provisional                                                            |
+| --- | --------------------------------------- | ---------------------------------------------------------------------------- |
+| D1  | Format de la matrícula                  | `^[0-9]{4,6}$` (coincidència completa; ha de ser segura com a nom de fitxer) |
+| D2  | Si `matricula.jpg` ja existeix al destí | Sobreescriure (la biblioteca guarda l'historial de versions)                 |
+| D5  | Resolució de sortida                    | 300 ppp (600 ppp disponible)                                                 |
+| D6  | Webcams dels parcs                      | ≥ 720p                                                                       |
+| D8  | Text RGPD de P0                         | Pendent del DPD                                                              |
+| D9  | Ulleres graduades                       | Sí, sense reflexos                                                           |
+| D10 | Validació matrícula ↔ usuari           | No, a la primera versió                                                      |
+| D11 | Qui desplega el `.sppkg`                | A coordinar amb l'IMI                                                        |
+| D12 | Pujada directa a biblioteca             | No a la v1                                                                   |
 
 ## Accessibilitat i identitat gràfica
 

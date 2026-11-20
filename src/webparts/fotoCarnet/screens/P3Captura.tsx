@@ -20,7 +20,13 @@ export const P3Captura: React.FC = () => {
         </div>
         <div className={styles.panell}>
           {/* Regió aria-live: una sola indicació alhora (la de més prioritat). */}
-          <div className={styles.guia} role="status" aria-live="polite" aria-atomic="true" aria-label={t('p3.guiaRegio')}>
+          <div
+            className={styles.guia}
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            aria-label={t('p3.guiaRegio')}
+          >
             {t('p3.guia')}
           </div>
           <p className={styles.comptador}>{t('p3.comptador', { n: 1, max: config.maxFotos })}</p>

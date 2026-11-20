@@ -1,10 +1,4 @@
-import {
-  CONFIG_PER_DEFECTE,
-  fusioProfunda,
-  resolConfig,
-  validaJsonAvancat,
-  validaRegex
-} from './configuracio';
+import { CONFIG_PER_DEFECTE, fusioProfunda, resolConfig, validaJsonAvancat, validaRegex } from './configuracio';
 
 describe('fusioProfunda', () => {
   it('fusiona objectes de manera recursiva sense mutar les entrades', () => {
@@ -72,7 +66,9 @@ describe('resolConfig', () => {
 });
 
 describe('resolConfig: validació de la configuració fusionada', () => {
-  const avis = (json: string): { config: ReturnType<typeof resolConfig>['config']; avisos: ReturnType<typeof resolConfig>['avisos'] } =>
+  const avis = (
+    json: string
+  ): { config: ReturnType<typeof resolConfig>['config']; avisos: ReturnType<typeof resolConfig>['avisos'] } =>
     resolConfig({ configAvancada: json });
 
   it('matriculaRegex no string: es manté la per defecte amb avís', () => {
@@ -153,12 +149,15 @@ describe('resolConfig: validació de la configuració fusionada', () => {
   });
 
   it('no llança mai: entrades estranyes tornen la configuració per defecte', () => {
-    [undefined, null, {}, { configAvancada: 5 as never, urlPlantilla: 5 as never, matriculaRegex: {} as never }].forEach(
-      (props) => {
-        expect(() => resolConfig(props as never)).not.toThrow();
-        expect(resolConfig(props as never).config).toEqual(CONFIG_PER_DEFECTE);
-      }
-    );
+    [
+      undefined,
+      null,
+      {},
+      { configAvancada: 5 as never, urlPlantilla: 5 as never, matriculaRegex: {} as never }
+    ].forEach((props) => {
+      expect(() => resolConfig(props as never)).not.toThrow();
+      expect(resolConfig(props as never).config).toEqual(CONFIG_PER_DEFECTE);
+    });
   });
 
   it('no comparteix referències amb la configuració per defecte', () => {

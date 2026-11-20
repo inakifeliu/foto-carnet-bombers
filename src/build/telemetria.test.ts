@@ -46,7 +46,8 @@ describe('loader que neutralitza la telemetria de MediaPipe', () => {
 });
 
 describe('guarda del paquet (verifica-paquet.js)', () => {
-  const sensePatch = 'xh=class{constructor(t){this.h=setInterval(()=>{this.flush()},6e4)}};u="https://odml.pa.googleapis.com/v1/log"';
+  const sensePatch =
+    'xh=class{constructor(t){this.h=setInterval(()=>{this.flush()},6e4)}};u="https://odml.pa.googleapis.com/v1/log"';
 
   it('falla amb un bundle sense neutralitzar', () => {
     const problemes = guarda.verifica([entrada('ClientSideAssets/web.js', sensePatch)]);
@@ -77,7 +78,9 @@ describe('guarda del paquet (verifica-paquet.js)', () => {
     expect(guarda.verifica([{ nom: 'l.js', dades: loaderWasm }], hash)).toEqual([]);
     expect(guarda.verifica([{ nom: 'l.js', dades: loaderWasm }]).length).toBeGreaterThan(0);
     const ambUrlReal = Buffer.from('fetch("https://tercer.com/x")');
-    expect(guarda.verifica([{ nom: 'l.js', dades: ambUrlReal }], guarda.sha256(ambUrlReal)).join()).toContain('tercer.com');
+    expect(guarda.verifica([{ nom: 'l.js', dades: ambUrlReal }], guarda.sha256(ambUrlReal)).join()).toContain(
+      'tercer.com'
+    );
   });
 });
 

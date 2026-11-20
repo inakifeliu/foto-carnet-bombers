@@ -2,7 +2,13 @@ import * as React from 'react';
 import type { FaceLandmarker } from '@mediapipe/tasks-vision';
 
 import styles from './ProvaViabilitat.module.scss';
-import { carregarFaceLandmarker, crearLandmarker, detectarFuncionalitats, type Delegat, type IFuncionalitats } from './mediapipe';
+import {
+  carregarFaceLandmarker,
+  crearLandmarker,
+  detectarFuncionalitats,
+  type Delegat,
+  type IFuncionalitats
+} from './mediapipe';
 import { missatgeErrorCamera, missatgeErrorDesar } from './errors';
 
 const MAX_VIOLACIONS: number = 20;
@@ -20,11 +26,15 @@ function fotogramaAJpeg(video: HTMLVideoElement): Promise<Blob | null> {
   }
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
   return new Promise<Blob | null>((resolve) => {
-    canvas.toBlob((blob) => {
-      canvas.width = 0;
-      canvas.height = 0;
-      resolve(blob);
-    }, 'image/jpeg', 0.92);
+    canvas.toBlob(
+      (blob) => {
+        canvas.width = 0;
+        canvas.height = 0;
+        resolve(blob);
+      },
+      'image/jpeg',
+      0.92
+    );
   });
 }
 
@@ -328,10 +338,14 @@ export default function ProvaViabilitat(): React.ReactElement {
       </div>
 
       {errorCamera !== '' && (
-        <p className={`${styles.missatge} ${styles.error}`} role="alert">{errorCamera}</p>
+        <p className={`${styles.missatge} ${styles.error}`} role="alert">
+          {errorCamera}
+        </p>
       )}
       {missatgeDesar !== '' && (
-        <p className={styles.missatge} role="status">{missatgeDesar}</p>
+        <p className={styles.missatge} role="status">
+          {missatgeDesar}
+        </p>
       )}
 
       <div className={styles.escena} hidden={!cameraActiva}>
@@ -357,14 +371,26 @@ export default function ProvaViabilitat(): React.ReactElement {
         {errorsModel.length === 0 ? (
           <p>Cap.</p>
         ) : (
-          <ul>{errorsModel.map((text, i) => <li key={i} className={styles.ko}>{text}</li>)}</ul>
+          <ul>
+            {errorsModel.map((text, i) => (
+              <li key={i} className={styles.ko}>
+                {text}
+              </li>
+            ))}
+          </ul>
         )}
 
         <h3>Violacions de CSP</h3>
         {violacions.length === 0 ? (
           <p>Cap violació detectada.</p>
         ) : (
-          <ul>{violacions.map((text, i) => <li key={i} className={styles.ko}>{text}</li>)}</ul>
+          <ul>
+            {violacions.map((text, i) => (
+              <li key={i} className={styles.ko}>
+                {text}
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     </section>

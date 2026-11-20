@@ -62,7 +62,19 @@ const ALLOWLIST_HOSTS = [
 
 const RUTA_LOADER_WASM = path.resolve(__dirname, '../src/webparts/fotoCarnet/assets/wasm/vision_wasm_internal.js');
 
-const EXTENSIONS_TEXT = new Set(['.js', '.css', '.json', '.xml', '.html', '.htm', '.svg', '.txt', '.rels', '.map', '.config']);
+const EXTENSIONS_TEXT = new Set([
+  '.js',
+  '.css',
+  '.json',
+  '.xml',
+  '.html',
+  '.htm',
+  '.svg',
+  '.txt',
+  '.rels',
+  '.map',
+  '.config'
+]);
 
 /** Llegeix les entrades d'un zip (central directory) i retorna [{nom, dades: Buffer}]. */
 function llegeixZip(buffer) {

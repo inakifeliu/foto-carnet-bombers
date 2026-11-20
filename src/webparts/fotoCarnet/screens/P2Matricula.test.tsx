@@ -20,7 +20,7 @@ const VaAP2: React.FC = () => {
 };
 
 describe('P2Matricula', () => {
-  it('el botó Continuar sempre està actiu i, en enviar un valor invàlid (Enter), mostra l\'error', () => {
+  it("el botó Continuar sempre està actiu i, en enviar un valor invàlid (Enter), mostra l'error", () => {
     const div = document.createElement('div');
     document.body.appendChild(div);
     const root = createRoot(div);
@@ -40,7 +40,9 @@ describe('P2Matricula', () => {
 
     // Enviar el formulari amb el camp buit (equivalent a Enter) mostra l'error.
     act(() => {
-      (div.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      (div.querySelector('form') as HTMLFormElement).dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
     });
     expect(alerta.textContent).toBe(t('p2.error'));
     expect(div.querySelector('#fc-matricula')?.getAttribute('aria-invalid')).toBe('true');
