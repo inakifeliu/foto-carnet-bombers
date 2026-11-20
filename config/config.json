@@ -20,7 +20,5 @@
     }
   },
   "externals": {},
-  "localizedResources": {
-    "FotoCarnetWebPartStrings": "lib/webparts/fotoCarnet/loc/{locale}.js"
-  }
+  "localizedResources": {}
 }

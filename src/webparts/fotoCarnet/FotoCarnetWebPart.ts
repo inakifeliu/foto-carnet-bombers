@@ -3,94 +3,32 @@ import { createRoot, type Root } from 'react-dom/client';
 import { Version } from '@microsoft/sp-core-library';
 import {
   type IPropertyPaneConfiguration,
+  PropertyPaneDropdown,
   PropertyPaneTextField
 } from '@microsoft/sp-property-pane';
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
-import { IReadonlyTheme } from '@microsoft/sp-component-base';
 
-import * as strings from 'FotoCarnetWebPartStrings';
-import FotoCarnet from './components/FotoCarnet';
-import { IFotoCarnetProps } from './components/IFotoCarnetProps';
+import { App } from './app/App';
+import { IPropietatsConfig, resolConfig, validaJsonAvancat, validaRegex } from './config/configuracio';
+import { t } from './i18n';
 
-export interface IFotoCarnetWebPartProps {
-  description: string;
+export interface IFotoCarnetWebPartProps extends IPropietatsConfig {
+  urlPlantilla?: string;
+  matriculaRegex?: string;
+  ppp?: number;
+  configAvancada?: string;
 }
 
 export default class FotoCarnetWebPart extends BaseClientSideWebPart<IFotoCarnetWebPartProps> {
-
-  private _isDarkTheme: boolean = false;
-  private _environmentMessage: string = '';
   private _root: Root | undefined;
 
   public render(): void {
-    const element: React.ReactElement<IFotoCarnetProps> = React.createElement(
-      FotoCarnet,
-      {
-        description: this.properties.description,
-        isDarkTheme: this._isDarkTheme,
-        environmentMessage: this._environmentMessage,
-        userDisplayName: this.context.pageContext.user.displayName
-      }
-    );
-
+    // Configuració efectiva = config.default.json <- valors del panell de propietats.
+    const { config } = resolConfig(this.properties);
     if (!this._root) {
       this._root = createRoot(this.domElement);
     }
-
-    this._root.render(element);
-  }
-
-  protected onInit(): Promise<void> {
-    return this._getEnvironmentMessage().then(message => {
-      this._environmentMessage = message;
-    });
-  }
-
-
-
-  private _getEnvironmentMessage(): Promise<string> {
-    if (!!this.context.sdks.microsoftTeams) { // running in Teams, office.com or Outlook
-      return this.context.sdks.microsoftTeams.teamsJs.app.getContext()
-        .then(context => {
-          let environmentMessage: string = '';
-          switch (context.app.host.name) {
-            case 'Office': // running in Office
-              environmentMessage = this.context.isServedFromLocalhost ? strings.AppLocalEnvironmentOffice : strings.AppOfficeEnvironment;
-              break;
-            case 'Outlook': // running in Outlook
-              environmentMessage = this.context.isServedFromLocalhost ? strings.AppLocalEnvironmentOutlook : strings.AppOutlookEnvironment;
-              break;
-            case 'Teams': // running in Teams
-            case 'TeamsModern':
-              environmentMessage = this.context.isServedFromLocalhost ? strings.AppLocalEnvironmentTeams : strings.AppTeamsTabEnvironment;
-              break;
-            default:
-              environmentMessage = strings.UnknownEnvironment;
-          }
-
-          return environmentMessage;
-        });
-    }
-
-    return Promise.resolve(this.context.isServedFromLocalhost ? strings.AppLocalEnvironmentSharePoint : strings.AppSharePointEnvironment);
-  }
-
-  protected onThemeChanged(currentTheme: IReadonlyTheme | undefined): void {
-    if (!currentTheme) {
-      return;
-    }
-
-    this._isDarkTheme = !!currentTheme.isInverted;
-    const {
-      semanticColors
-    } = currentTheme;
-
-    if (semanticColors) {
-      this.domElement.style.setProperty('--bodyText', semanticColors.bodyText || null);
-      this.domElement.style.setProperty('--link', semanticColors.link || null);
-      this.domElement.style.setProperty('--linkHovered', semanticColors.linkHovered || null);
-    }
-
+    this._root.render(React.createElement(App, { config }));
   }
 
   protected onDispose(): void {
@@ -103,18 +41,43 @@ export default class FotoCarnetWebPart extends BaseClientSideWebPart<IFotoCarnet
   }
 
   protected getPropertyPaneConfiguration(): IPropertyPaneConfiguration {
+    const efectiva = resolConfig(this.properties).config;
     return {
       pages: [
         {
-          header: {
-            description: strings.PropertyPaneDescription
-          },
+          header: { description: t('propietats.descripcio') },
           groups: [
             {
-              groupName: strings.BasicGroupName,
+              groupName: t('propietats.grup'),
               groupFields: [
-                PropertyPaneTextField('description', {
-                  label: strings.DescriptionFieldLabel
+                PropertyPaneTextField('urlPlantilla', {
+                  label: t('propietats.urlPlantilla'),
+                  placeholder: efectiva.forms.urlPlantilla
+                }),
+                PropertyPaneTextField('matriculaRegex', {
+                  label: t('propietats.matriculaRegex'),
+                  placeholder: efectiva.matriculaRegex,
+                  onGetErrorMessage: (valor: string): string =>
+                    validaRegex(valor) ? '' : t('propietats.avis.regexInvalida')
+                }),
+                PropertyPaneDropdown('ppp', {
+                  label: t('propietats.ppp'),
+                  selectedKey: efectiva.sortida.ppp,
+                  options: [
+                    { key: 300, text: t('propietats.ppp300') },
+                    { key: 600, text: t('propietats.ppp600') }
+                  ]
+                }),
+                PropertyPaneTextField('configAvancada', {
+                  label: t('propietats.avancada'),
+                  multiline: true,
+                  rows: 12,
+                  resizable: true,
+                  // Avís no bloquejant: un JSON invalid s'ignora en temps d'execució.
+                  onGetErrorMessage: (valor: string): string => {
+                    const avis = validaJsonAvancat(valor);
+                    return avis ? t(`propietats.avis.${avis}` as const) : '';
+                  }
                 })
               ]
             }
