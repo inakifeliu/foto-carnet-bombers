@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useApp } from '../app/AppContext';
-import { construeixUrlForms, nomFitxer } from '../app/formulari';
+import { construeixUrlForms, diagnosticaPlantilla, nomFitxer } from '../app/formulari';
 import { Boto } from '../components/Boto';
 import { Modal } from '../components/Modal';
 import { TextRic } from '../components/TextRic';
@@ -9,8 +9,10 @@ import styles from '../styles/brand.module.scss';
 
 export const P6Forms: React.FC = () => {
   const { estat, config, dispatch } = useApp();
+  const botoInstruccions = React.useRef<HTMLButtonElement>(null);
   const [modalObert, setModalObert] = React.useState<boolean>(true);
   const url = construeixUrlForms(config.forms.urlPlantilla, estat.matricula);
+  const diagnostic = diagnosticaPlantilla(config.forms.urlPlantilla);
   const fitxer = nomFitxer(estat.matricula);
 
   const obreFormulari = (): void => {
@@ -26,21 +28,25 @@ export const P6Forms: React.FC = () => {
       <p className={styles.text}>{t('p6.text')}</p>
       {!url && (
         <p className={styles.error} role="alert">
-          {t('p6.sensePlantilla')}
+          {t(diagnostic === 'noHttps' ? 'p6.urlNoHttps' : 'p6.sensePlantilla')}
         </p>
       )}
       <div className={styles.accions}>
         <Boto variant="secundari" onClick={() => dispatch({ tipus: 'ENRERE' })}>
           {t('nav.enrere')}
         </Boto>
-        <Boto variant="secundari" onClick={() => setModalObert(true)}>
+        <Boto variant="secundari" refBoto={botoInstruccions} onClick={() => setModalObert(true)}>
           {t('p6.mostrarInstruccions')}
         </Boto>
         <Boto onClick={() => dispatch({ tipus: 'ENDAVANT' })}>{t('p6.jaEnviat')}</Boto>
       </div>
 
       {modalObert && (
-        <Modal titol={t('p6.modalTitol')} onTancar={() => setModalObert(false)}>
+        <Modal
+          titol={t('p6.modalTitol')}
+          onTancar={() => setModalObert(false)}
+          retornaFocusA={() => botoInstruccions.current ?? undefined}
+        >
           <ol className={styles.passos}>
             <li>
               <TextRic text={t('p6.pas1')} />
