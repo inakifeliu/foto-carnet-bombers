@@ -9,7 +9,7 @@ import {
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
 
 import { App } from './app/App';
-import { IPropietatsConfig, resolConfig, validaJsonAvancat, validaRegex } from './config/configuracio';
+import { type IAvis, IPropietatsConfig, resolConfig, validaRegex } from './config/configuracio';
 import { t } from './i18n';
 
 export interface IFotoCarnetWebPartProps extends IPropietatsConfig {
@@ -17,6 +17,10 @@ export interface IFotoCarnetWebPartProps extends IPropietatsConfig {
   matriculaRegex?: string;
   ppp?: number;
   configAvancada?: string;
+}
+
+function textAvis(avis: IAvis): string {
+  return t(`propietats.avis.${avis.codi}` as const, { camp: avis.camp ?? '' });
 }
 
 export default class FotoCarnetWebPart extends BaseClientSideWebPart<IFotoCarnetWebPartProps> {
@@ -73,11 +77,11 @@ export default class FotoCarnetWebPart extends BaseClientSideWebPart<IFotoCarnet
                   multiline: true,
                   rows: 12,
                   resizable: true,
-                  // Avís no bloquejant: un JSON invalid s'ignora en temps d'execució.
-                  onGetErrorMessage: (valor: string): string => {
-                    const avis = validaJsonAvancat(valor);
-                    return avis ? t(`propietats.avis.${avis}` as const) : '';
-                  }
+                  // Avisos no bloquejants: un valor invàlid s'ignora en temps d'execució.
+                  onGetErrorMessage: (valor: string): string =>
+                    resolConfig({ ...this.properties, configAvancada: valor })
+                      .avisos.map(textAvis)
+                      .join(' ')
                 })
               ]
             }

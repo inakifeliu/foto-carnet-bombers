@@ -77,6 +77,7 @@
   "p6.obrir": "Obrir el formulari",
   "p6.enllac": "Si no s'ha obert, clica aquí",
   "p6.sensePlantilla": "L'adreça del formulari no està ben configurada (falta el marcador de matrícula). Avisa l'administrador del lloc.",
+  "p6.urlNoHttps": "L'adreça del formulari no és vàlida: ha de ser un enllaç https. Avisa l'administrador del lloc.",
   "p6.mostrarInstruccions": "Mostrar les instruccions",
   "p6.jaEnviat": "Ja l'he enviat",
 
@@ -99,5 +100,9 @@
   "propietats.avis.jsonInvalid": "Avís: el JSON de la configuració avançada no és vàlid i s'ignora. S'usen els valors per defecte.",
   "propietats.avis.jsonNoObjecte": "Avís: la configuració avançada ha de ser un objecte JSON. S'ignora.",
   "propietats.avis.regexInvalida": "Avís: l'expressió regular no és vàlida i s'ignora. S'usa la per defecte.",
-  "propietats.avis.pppInvalid": "Avís: la resolució ha de ser 300 o 600 ppp."
+  "propietats.avis.pppInvalid": "Avís: la resolució ha de ser 300 o 600 ppp. S'usa la per defecte.",
+  "propietats.avis.maxFotosInvalid": "Avís: el nombre màxim de fotos ha de ser un enter entre 1 i 10. S'usa el per defecte.",
+  "propietats.avis.valorInvalid": "Avís: el valor de «{camp}» té un tipus no vàlid i s'ignora. S'usa el per defecte.",
+  "propietats.avis.campDesconegut": "Avís: el camp «{camp}» no existeix i s'ignora.",
+  "propietats.avis.configInvalida": "Avís: la configuració no s'ha pogut llegir. S'usen els valors per defecte."
 }
