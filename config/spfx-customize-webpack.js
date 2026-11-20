@@ -1,5 +1,7 @@
 'use strict';
 
+const path = require('path');
+
 /**
  * Personalització de la configuració de Webpack de SPFx (heft, SPFx 1.24).
  *
@@ -10,6 +12,14 @@
  */
 module.exports = function customizeWebpack(config) {
   const rules = config.module.rules;
+
+  // Neutralitza la telemetria de MediaPipe (POST a odml.pa.googleapis.com, spec §5).
+  // S'aplica a totes les variants del bundle que Webpack podria resoldre (.mjs/.cjs/.js).
+  rules.push({
+    test: /[\\/]@mediapipe[\\/]tasks-vision[\\/]vision_bundle\.(mjs|cjs|js)$/,
+    enforce: 'pre',
+    loader: path.resolve(__dirname, 'mediapipe-sense-telemetria.js')
+  });
 
   rules.push({
     test: /\.(task|tflite|wasm)$/i,
