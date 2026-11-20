@@ -84,6 +84,20 @@ La configuració fusionada es **valida** contra la forma i els tipus de `config.
 - Els tests de Jest (`src/build/telemetria.test.ts`) demostren que el bundle original fa fallar la guarda i que el bundle parxejat la passa.
 - El `vision_wasm_internal.js` i el WASM no contenen cap crida de xarxa pròpia: el loader només usa `fetch`/`XMLHttpRequest` per carregar el `.wasm` des de la URL del paquet que li passem.
 
+## Prova local sense SharePoint
+
+Per provar la càmera, el rendiment de MediaPipe i el desat de JPEG en un PC corporatiu **sense Node.js ni permisos al catàleg d'aplicacions**, es pot generar una pàgina HTML autònoma:
+
+```
+npm run prova-local
+```
+
+Genera `paquets/prova-local-camera.html` (~24 MB): s'obre amb **doble clic a Edge** (URL `file://`), sense servidor, sense instal·lar res i sense xarxa. Hi ha incrustats en base64 el loader WASM, el `.wasm` i `face_landmarker.task`; en executar-se es converteixen en URL `blob:` i `Uint8Array` (a `file://` no hi ha `fetch` ni `import` de fitxers locals). El codi és a `eines/prova-local/` (TypeScript, DOM sense React) i es compila amb esbuild a un IIFE clàssic.
+
+- Aplica el mateix transform de telemetria que SPFx (`config/mediapipe-sense-telemetria.js`) i passa la mateixa guarda que `verifica-paquet.js` sobre el JS/HTML generat i el loader decodificat; si falla, no es genera el fitxer.
+- Mostra diagnòstic de l'equip, càmera real (resolució i fps), delegat GPU/CPU, temps de càrrega i de detecció (mitjana i p95), prova amb una imatge, desat de `prova.jpg` (selector de fitxers o descàrrega) i un informe de text copiable (mai inclou cap imatge).
+- **No prova SharePoint** (CSP, càrrega del web part, Forms): només el navegador i el maquinari.
+
 ## Riscos
 
 - **CSP i WebAssembly (`'unsafe-eval'`)** (§5): MediaPipe compila WebAssembly. SharePoint no permet afegir `'wasm-unsafe-eval'` com a font fiable; avui la compilació de WASM funciona perquè la CSP de SharePoint inclou `'unsafe-eval'`. Si Microsoft l'elimina en el futur, MediaPipe deixaria de funcionar i el web part quedaria inservible. No es pot comprovar en local: cal validar-ho a la Fase 0 amb `ProvaViabilitat` en un lloc real (`npm start` o `.sppkg` provisional) i vigilar els canvis de la CSP de SharePoint Online.

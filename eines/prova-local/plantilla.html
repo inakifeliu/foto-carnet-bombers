@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="ca">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Prova local de càmera — Foto carnet Bombers</title>
+    <style>
+      :root {
+        --vermell: #eb263c;
+        --vermell-fosc: #c41d31;
+        --text: #1f2328;
+        --gris: #5a6270;
+        --vora: #cfd4da;
+        --fons: #f4f5f7;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: 'Segoe UI', Arial, sans-serif;
+        font-size: 17px;
+        line-height: 1.45;
+        color: var(--text);
+        background: var(--fons);
+      }
+      main {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 16px;
+      }
+      h1 {
+        font-size: 28px;
+        margin: 8px 0 12px;
+      }
+      h2 {
+        font-size: 21px;
+        margin: 0 0 10px;
+      }
+      section {
+        background: #fff;
+        border: 1px solid var(--vora);
+        border-radius: 8px;
+        padding: 16px;
+        margin: 16px 0;
+      }
+      button {
+        font: inherit;
+        font-size: 19px;
+        font-weight: 700;
+        padding: 12px 22px;
+        border-radius: 6px;
+        border: 2px solid var(--vermell);
+        background: var(--vermell);
+        color: #fff;
+        cursor: pointer;
+        margin: 4px 8px 4px 0;
+      }
+      button:hover:not(:disabled) {
+        background: var(--vermell-fosc);
+        border-color: var(--vermell-fosc);
+      }
+      button.secundari {
+        background: #fff;
+        color: var(--vermell);
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      button:focus-visible,
+      select:focus-visible,
+      input:focus-visible,
+      textarea:focus-visible {
+        outline: 3px solid #1a5fb4;
+        outline-offset: 2px;
+      }
+      select,
+      input[type='file'] {
+        font: inherit;
+        padding: 8px;
+        max-width: 100%;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      td {
+        border-bottom: 1px solid var(--vora);
+        padding: 4px 8px;
+        vertical-align: top;
+      }
+      td:first-child {
+        font-weight: 600;
+        width: 250px;
+        color: var(--gris);
+      }
+      .ok {
+        color: #146c2e;
+        font-weight: 700;
+      }
+      .ko {
+        color: #b3261e;
+        font-weight: 700;
+      }
+      .avis {
+        background: #fff4ce;
+        border: 1px solid #e0b800;
+        padding: 8px 12px;
+        border-radius: 6px;
+        margin: 8px 0;
+      }
+      .error {
+        background: #fde7e9;
+        border: 1px solid #d13438;
+        padding: 8px 12px;
+        border-radius: 6px;
+        margin: 8px 0;
+      }
+      .info {
+        color: var(--gris);
+      }
+      .escena {
+        position: relative;
+        display: inline-block;
+        max-width: 100%;
+        background: #000;
+        margin-top: 8px;
+      }
+      .escena video,
+      .escena canvas {
+        display: block;
+        max-width: 100%;
+        height: auto;
+      }
+      .escena canvas.superposat {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+      }
+      .mirall {
+        transform: scaleX(-1);
+      }
+      textarea {
+        width: 100%;
+        min-height: 220px;
+        font-family: Consolas, monospace;
+        font-size: 14px;
+      }
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Prova local de càmera — Foto carnet Bombers</h1>
+      <p>
+        Aquesta pàgina comprova, en aquest ordinador i sense instal·lar res, si funcionen la càmera web, el detector de
+        cara (MediaPipe Face Landmarker, amb el seu rendiment) i el desat d'un JPEG a la carpeta d'Imatges.
+        <strong>Res no surt de l'ordinador</strong>: no hi ha servidor, no es fa cap petició de xarxa i no es desa res
+        al navegador. <strong>No prova SharePoint</strong> (ni la seva seguretat ni la càrrega del web part): només el
+        maquinari i el navegador.
+      </p>
+
+      <section aria-labelledby="t-diag">
+        <h2 id="t-diag">1. Diagnòstic de l'equip</h2>
+        <table id="diagnostic"></table>
+      </section>
+
+      <section aria-labelledby="t-cam">
+        <h2 id="t-cam">2. Càmera</h2>
+        <p>
+          <label for="dispositiu">Càmera:</label>
+          <select id="dispositiu" disabled>
+            <option>(es mostraran en obrir la càmera)</option>
+          </select>
+        </p>
+        <button id="obre" type="button">Obrir la càmera</button>
+        <button id="tanca" type="button" class="secundari" disabled>Tancar la càmera</button>
+        <div id="avis-cam"></div>
+        <table id="info-cam"></table>
+        <div class="escena" id="escena-video" hidden>
+          <video id="video" class="mirall" autoplay playsinline muted></video>
+          <canvas id="superposicio" class="superposat mirall"></canvas>
+        </div>
+      </section>
+
+      <section aria-labelledby="t-mp">
+        <h2 id="t-mp">3. Detector de cara (MediaPipe)</h2>
+        <button id="carrega" type="button">Carregar el model</button>
+        <span class="info">Es carrega sol en obrir la càmera si encara no ho està.</span>
+        <div id="avis-mp"></div>
+        <table id="info-mp"></table>
+      </section>
+
+      <section aria-labelledby="t-img">
+        <h2 id="t-img">4. Provar amb una imatge</h2>
+        <p class="info">
+          Serveix per provar MediaPipe encara que no hi hagi càmera. La imatge no es desa ni s'envia enlloc.
+        </p>
+        <label for="fitxer">Tria una foto:</label>
+        <input id="fitxer" type="file" accept="image/*" />
+        <div id="avis-img"></div>
+        <div class="escena" id="escena-img" hidden><canvas id="canvas-img"></canvas></div>
+      </section>
+
+      <section aria-labelledby="t-desa">
+        <h2 id="t-desa">5. Desar un JPEG de prova</h2>
+        <p class="info">
+          Desa el fotograma actual de la càmera (sense efecte mirall) o, si no hi ha càmera, la imatge triada.
+        </p>
+        <button id="desa" type="button">Desar JPEG de prova</button>
+        <div id="avis-desa"></div>
+      </section>
+
+      <section aria-labelledby="t-res">
+        <h2 id="t-res">6. Resultat</h2>
+        <p class="info">L'informe és només text (mai inclou cap imatge).</p>
+        <button id="copia" type="button">Copiar el resultat</button>
+        <div id="avis-copia"></div>
+        <textarea id="informe" readonly aria-label="Informe de la prova"></textarea>
+      </section>
+    </main>
+
+    <!-- Recursos incrustats en base64 (es decodifiquen en executar; cap fetch ni import extern). -->
+    <script id="b64-loader" type="text/plain">
+      @@B64_LOADER@@
+    </script>
+    <script id="b64-wasm" type="text/plain">
+      @@B64_WASM@@
+    </script>
+    <script id="b64-model" type="text/plain">
+      @@B64_MODEL@@
+    </script>
+    <script>
+      @@APP_JS@@
+    </script>
+  </body>
+</html>

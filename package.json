@@ -13,7 +13,8 @@
     "verifica-paquet": "node scripts/verifica-paquet.js",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "heft test"
+    "test": "heft test",
+    "prova-local": "node scripts/construeix-prova-local.mjs"
   },
   "dependencies": {
     "@fluentui/react": "^8.106.4",
@@ -40,6 +41,7 @@
     "@types/react-dom": "18.2.25",
     "@types/webpack-env": "~1.15.2",
     "css-loader": "~7.1.2",
+    "esbuild": "0.25.12",
     "eslint": "9.37.0",
     "eslint-plugin-react-hooks": "5.2.0",
     "prettier": "^3.6.2",
