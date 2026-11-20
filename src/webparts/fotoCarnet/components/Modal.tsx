@@ -6,6 +6,8 @@ import { Boto } from './Boto';
 export interface IModalProps {
   titol: string;
   onTancar: () => void;
+  /** Element on retornar el focus en tancar; per defecte, el que tenia el focus en obrir-se (si encara existeix). */
+  retornaFocusA?: () => HTMLElement | undefined;
   children?: React.ReactNode;
 }
 
@@ -13,8 +15,10 @@ const FOCALITZABLES =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /** Diàleg modal accessible: aria-modal, focus atrapat, Esc per tancar i retorn del focus. */
-export const Modal: React.FC<IModalProps> = ({ titol, onTancar, children }) => {
+export const Modal: React.FC<IModalProps> = ({ titol, onTancar, retornaFocusA, children }) => {
   const dialeg = React.useRef<HTMLDivElement>(null);
+  const retornaFocusRef = React.useRef(retornaFocusA);
+  retornaFocusRef.current = retornaFocusA;
   const idTitol = 'fc-modal-titol';
 
   React.useEffect(() => {
@@ -26,8 +30,9 @@ export const Modal: React.FC<IModalProps> = ({ titol, onTancar, children }) => {
       dialeg.current?.focus();
     }
     return (): void => {
-      if (anterior && typeof anterior.focus === 'function') {
-        anterior.focus();
+      const destinacio = retornaFocusRef.current?.() ?? (anterior && anterior.isConnected ? anterior : undefined);
+      if (destinacio && typeof destinacio.focus === 'function') {
+        destinacio.focus();
       }
     };
   }, []);

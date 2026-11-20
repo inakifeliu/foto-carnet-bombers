@@ -29,15 +29,20 @@ const PANTALLES: Record<Pantalla, React.FC> = {
   NoCompatible
 };
 
-const Contingut: React.FC = () => {
+export const Contingut: React.FC = () => {
   const { estat } = useApp();
   const principal = React.useRef<HTMLElement>(null);
   const primera = React.useRef(true);
 
-  // En canviar de pantalla, el focus passa al contingut (teclat i lectors de pantalla).
+  // En canviar de pantalla, el focus passa al contingut (teclat i lectors de pantalla),
+  // tret que la pantalla hagi obert un diàleg modal: aquest ja ha agafat el focus (els
+  // efectes dels fills s'executen abans que els del pare) i té prioritat.
   React.useEffect(() => {
     if (primera.current) {
       primera.current = false;
+      return;
+    }
+    if (principal.current?.querySelector('[aria-modal="true"]')) {
       return;
     }
     principal.current?.focus();

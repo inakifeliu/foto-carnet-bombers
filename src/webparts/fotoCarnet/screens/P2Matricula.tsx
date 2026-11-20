@@ -12,7 +12,8 @@ export const P2Matricula: React.FC = () => {
   const [tocat, setTocat] = React.useState<boolean>(false);
 
   const resultat = validaMatricula(valor, config.matriculaRegex);
-  const mostraError = tocat && valor.trim() !== '' && !resultat.valida;
+  // El botó sempre està actiu: l'error es mostra en intentar continuar (o en sortir del camp).
+  const mostraError = tocat && !resultat.valida;
 
   const continuar = (): void => {
     setTocat(true);
@@ -47,7 +48,7 @@ export const P2Matricula: React.FC = () => {
           aria-describedby="fc-matricula-ajuda fc-matricula-error"
           aria-invalid={mostraError}
           onChange={(e) => setValor(e.target.value)}
-          onBlur={() => setTocat(true)}
+          onBlur={() => valor.trim() !== '' && setTocat(true)}
         />
         <div id="fc-matricula-error" role="alert" className={styles.error}>
           {mostraError ? (resultat.regexInvalida ? t('p2.errorConfig') : t('p2.error')) : ''}
@@ -61,7 +62,7 @@ export const P2Matricula: React.FC = () => {
           <Boto variant="secundari" onClick={() => dispatch({ tipus: 'ENRERE' })}>
             {t('nav.enrere')}
           </Boto>
-          <Boto type="submit" disabled={!resultat.valida}>
+          <Boto type="submit">
             {t('p2.continuar')}
           </Boto>
         </div>
