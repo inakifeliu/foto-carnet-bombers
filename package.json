@@ -12,7 +12,8 @@
     "start": "heft start --clean",
     "verifica-paquet": "node scripts/verifica-paquet.js",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "test": "heft test"
   },
   "dependencies": {
     "@fluentui/react": "^8.106.4",
