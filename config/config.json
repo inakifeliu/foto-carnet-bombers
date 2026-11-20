@@ -1,0 +1,26 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/config.2.0.schema.json",
+  "version": "2.0",
+  "bundles": {
+    "foto-carnet-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/fotoCarnet/FotoCarnetWebPart.js",
+          "manifest": "./src/webparts/fotoCarnet/FotoCarnetWebPart.manifest.json"
+        }
+      ]
+    },
+    "prova-viabilitat-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/provaViabilitat/ProvaViabilitatWebPart.js",
+          "manifest": "./src/webparts/provaViabilitat/ProvaViabilitatWebPart.manifest.json"
+        }
+      ]
+    }
+  },
+  "externals": {},
+  "localizedResources": {
+    "FotoCarnetWebPartStrings": "lib/webparts/fotoCarnet/loc/{locale}.js"
+  }
+}

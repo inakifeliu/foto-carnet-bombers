@@ -1,0 +1,39 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+  "solution": {
+    "name": "foto-carnet-bombers-client-side-solution",
+    "id": "a44e727f-a43d-4197-ac11-017893da7337",
+    "version": "1.0.0.0",
+    "includeClientSideAssets": true,
+    "skipFeatureDeployment": true,
+    "developer": {
+      "name": "",
+      "websiteUrl": "",
+      "privacyUrl": "",
+      "termsOfUseUrl": "",
+      "mpnId": "Undefined-1.24.2"
+    },
+    "metadata": {
+      "shortDescription": {
+        "default": "foto-carnet-bombers description"
+      },
+      "longDescription": {
+        "default": "foto-carnet-bombers description"
+      },
+      "screenshotPaths": [],
+      "videoUrl": "",
+      "categories": []
+    },
+    "features": [
+      {
+        "title": "foto-carnet-bombers Feature",
+        "description": "The feature that activates elements of the foto-carnet-bombers solution.",
+        "id": "21932dd9-bbe3-4be8-bb9c-f80ebdfa010b",
+        "version": "1.0.0.0"
+      }
+    ]
+  },
+  "paths": {
+    "zippedPackage": "solution/foto-carnet-bombers.sppkg"
+  }
+}

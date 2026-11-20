@@ -1,0 +1,22 @@
+{
+  "@microsoft/generator-sharepoint": {
+    "whichFolder": "subdir",
+    "solutionName": "foto-carnet-bombers",
+    "environment": "spo",
+    "packageManager": "npm",
+    "skipFeatureDeployment": true,
+    "useGulp": false,
+    "componentType": "webpart",
+    "template": "react",
+    "componentName": "FotoCarnet",
+    "componentDescription": "Foto de carnet amb uniforme",
+    "plusBeta": false,
+    "isCreatingSolution": true,
+    "nodeVersion": "22.23.5",
+    "sdksVersions": {},
+    "version": "1.24.2",
+    "libraryName": "foto-carnet-bombers",
+    "libraryId": "a44e727f-a43d-4197-ac11-017893da7337",
+    "solutionShortDescription": "foto-carnet-bombers description"
+  }
+}
