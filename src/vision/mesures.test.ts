@@ -217,6 +217,20 @@ describe('normalitzaMascara', () => {
     expect(b?.data[9]).toBe(0);
   });
 
+  it('reutilitza el buffer de sortida si té la mida justa (sense reservar memòria nova)', () => {
+    const bruta = { data: Uint8Array.from({ length: 100 }, (_v, i) => (i % 10 < 5 ? 255 : 0)), w: 10, h: 10 };
+    const primera = normalitzaMascara(bruta, { x: 0.2, y: 0.5 });
+    const segona = normalitzaMascara({ ...bruta, data: bruta.data.map((v) => 255 - v) }, { x: 0.8, y: 0.5 }, primera);
+    expect(segona?.data).toBe(primera?.data);
+    // El buffer reutilitzat s'ha sobreescrit amb la màscara nova.
+    expect(segona?.data[0]).toBe(0);
+    expect(segona?.data[9]).toBe(1);
+    // Amb una mida diferent no es pot reutilitzar: se'n crea un de nou.
+    const gran = normalitzaMascara({ data: new Uint8Array(400), w: 20, h: 20 }, { x: 0.5, y: 0.5 }, primera);
+    expect(gran?.data).not.toBe(primera?.data);
+    expect(gran?.data.length).toBe(400);
+  });
+
   it('màscara buida o inconsistent: undefined', () => {
     expect(normalitzaMascara({ data: new Uint8Array(0), w: 0, h: 0 }, { x: 0.5, y: 0.5 })).toBeUndefined();
     expect(normalitzaMascara({ data: new Uint8Array(5), w: 10, h: 10 }, { x: 0.5, y: 0.5 })).toBeUndefined();
@@ -317,5 +331,57 @@ describe('calculaMesures (escena sintètica 640×360)', () => {
     const fosca = creaImatge(W, H, () => [30, 30, 30]);
     const r = calculaMesures({ imatge: fosca, cares: [creaLandmarks()] }, LLINDARS, PARAMS_RETALL);
     expect(r.mesures.llum).toBeCloseTo(30, 3);
+  });
+});
+
+describe('calculaMesures: la màscara pot tenir qualsevol mida (coordenades normalitzades)', () => {
+  const W = 640;
+  const H = 360;
+  const esPersona = (fx: number, fy: number): boolean =>
+    (fx >= 0.4 && fx <= 0.6 && fy >= 0.22 && fy <= 0.62) || (fx >= 0.25 && fx <= 0.75 && fy >= 0.62);
+  const imatge = creaImatge(W, H, (x, y) => {
+    if (!esPersona(x / W, y / H)) {
+      return [240, 240, 240];
+    }
+    return y / H >= 0.62 ? [20, 40, 140] : (x + y) % 2 === 0 ? [160, 130, 110] : [140, 110, 90];
+  });
+  const mascaraDe = (w: number, h: number): { data: Uint8Array; w: number; h: number } => {
+    const m = creaMascara(w, h, (x, y) => esPersona((x + 0.5) / w, (y + 0.5) / h));
+    return { data: m.data.map((v) => (v === 1 ? 255 : 0)), w, h };
+  };
+  const cara = creaLandmarks({ centreX: 0.5, yFront: 0.3, yBarbeta: 0.62, ample: 0.2 });
+
+  it.each([
+    [64, 36, 0.7],
+    [256, 144, 0.9],
+    [640, 360, 0.9]
+  ])(
+    'mascara %i×%i dona fons, polo i retall coherents (la vora de la màscara és més tosca com més petita)',
+    (w, h, fonsMin) => {
+      const r = calculaMesures({ imatge, cares: [cara], mascaraBruta: mascaraDe(w, h) }, LLINDARS, PARAMS_RETALL);
+      expect(r.mesures.fons).toBeGreaterThan(fonsMin);
+      expect(r.mesures.polo).toBeGreaterThan(0.9);
+      expect(r.mascara?.w).toBe(w);
+      expect(r.retall?.origenCap).toBe('mascara');
+      expect(r.retall?.capY).toBeCloseTo(0.22 * H, -1);
+    }
+  );
+
+  it('una màscara ja normalitzada (`mascara`) té prioritat i s’usa tal qual (memòria cau entre segmentacions)', () => {
+    const normalitzada = creaMascara(256, 144, (x, y) => esPersona((x + 0.5) / 256, (y + 0.5) / 144));
+    const r = calculaMesures(
+      { imatge, cares: [cara], mascara: normalitzada, mascaraBruta: mascaraDe(64, 36) },
+      LLINDARS,
+      PARAMS_RETALL
+    );
+    expect(r.mascara).toBe(normalitzada);
+  });
+
+  it('sense màscara, el retall surt dels landmarks i el fons i el polo no es mesuren', () => {
+    const r = calculaMesures({ imatge, cares: [cara] }, LLINDARS, PARAMS_RETALL);
+    expect(r.mesures.fons).toBeUndefined();
+    expect(r.mesures.polo).toBeUndefined();
+    expect(r.retall?.origenCap).toBe('landmarks');
+    expect(r.retall?.capY).toBeCloseTo((0.3 - 0.25 * 0.32) * H, 4);
   });
 });

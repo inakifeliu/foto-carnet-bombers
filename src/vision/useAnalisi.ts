@@ -4,11 +4,12 @@ import type { ClauI18n } from '../i18n';
 import type { IAnalitzador } from './analitzador';
 import { avalua } from './avaluacio';
 import { estatAnalisi } from './estatAnalisi';
+import { FPS_NORMAL, MitjanaTemps, PressupostAnalisi } from './pressupost';
 import { EstabilitzadorMissatge, Suavitzador } from './suavitzat';
 import { ORDRE_PRIORITAT, type IAvaluacio } from './tipus';
 
-/** Freqüència objectiu de l'anàlisi (RF-04: ~10-15 fps). El vídeo es continua mostrant a la seva freqüència. */
-export const FPS_ANALISI = 12;
+/** Freqüència objectiu de l'anàlisi en condicions normals (RF-04: ~10-15 fps); el pressupost la pot abaixar. */
+export const FPS_ANALISI = FPS_NORMAL;
 const FINESTRA_SUAVITZAT_MS = 500;
 const ERRORS_SEGUITS_MAXIM = 5;
 const MIN_ACTUALITZACIO_UI_MS = 250;
@@ -30,6 +31,8 @@ export interface IEstatBucle {
   missatge?: ClauI18n;
   /** El bucle s'ha aturat per errors repetits. */
   error: boolean;
+  /** El bucle s'ha aturat perquè l'anàlisi tardava massa (pressupost de temps, vegeu `pressupost.ts`). */
+  massaLent: boolean;
 }
 
 const signatura = (a: IAvaluacio, missatge: ClauI18n | undefined): string =>
@@ -48,7 +51,7 @@ type VideoAmbCallback = HTMLVideoElement & {
  * quan canvien els semàfors o el missatge (o cada 0,25 s), de manera que el lector de pantalla no sent spam.
  */
 export function useAnalisi({ video, analitzador, actiu, fluxId, config, delegat }: IParamsAnalisi): IEstatBucle {
-  const [estat, setEstat] = React.useState<IEstatBucle>({ error: false });
+  const [estat, setEstat] = React.useState<IEstatBucle>({ error: false, massaLent: false });
   const llindars = config.llindars;
 
   React.useEffect(() => {
@@ -62,6 +65,8 @@ export function useAnalisi({ video, analitzador, actiu, fluxId, config, delegat 
     let idRaf: number | undefined;
     let errorsSeguits = 0;
     let ultimaAnalisi = -Infinity;
+    const pressupost = new PressupostAnalisi();
+    const tempsPerPas = new MitjanaTemps();
     let ultimaUi = -Infinity;
     let ultimaSignatura = '';
     let darrerFpsVideo: { ts: number; fotogrames: number } | undefined;
@@ -69,8 +74,7 @@ export function useAnalisi({ video, analitzador, actiu, fluxId, config, delegat 
     const suavitzador = new Suavitzador(FINESTRA_SUAVITZAT_MS);
     const estabilitzador = new EstabilitzadorMissatge<ClauI18n>(3);
     const instants: number[] = [];
-    let msMitja = 0;
-    setEstat({ error: false });
+    setEstat({ error: false, massaLent: false });
 
     const programa = (): void => {
       const v = video.current as VideoAmbCallback | null;
@@ -90,16 +94,17 @@ export function useAnalisi({ video, analitzador, actiu, fluxId, config, delegat 
       }
       programa();
       const v = video.current;
-      if (!v || v.videoWidth === 0 || v.readyState < 2 || now - ultimaAnalisi < 1000 / FPS_ANALISI - 4) {
+      if (!v || v.videoWidth === 0 || v.readyState < 2 || now - ultimaAnalisi < 1000 / pressupost.fps - 4) {
         return;
       }
       ultimaAnalisi = now;
       const t0 = performance.now();
       try {
-        const mostra = analitzador.analitza(v, v.videoWidth, v.videoHeight);
+        const mostra = analitzador.analitza(v, v.videoWidth, v.videoHeight, { segmentaCada: pressupost.segmentaCada });
         errorsSeguits = 0;
         const t1 = performance.now();
-        msMitja = msMitja === 0 ? t1 - t0 : msMitja * 0.8 + (t1 - t0) * 0.2;
+        const nivell = pressupost.registra(t1 - t0);
+        const temps = tempsPerPas.afegeix(mostra.temps, mostra.segmentat);
         instants.push(t1);
         while (instants.length > 1 && t1 - instants[0] > 2000) {
           instants.shift();
@@ -116,7 +121,7 @@ export function useAnalisi({ video, analitzador, actiu, fluxId, config, delegat 
           }
         }
         const mesures = suavitzador.afegeix(t1, mostra.mesures);
-        const avaluacio = avalua(mesures, llindars);
+        const avaluacio = avalua(mesures, llindars, { segmentacio: mostra.segmentacio });
         const candidat: ClauI18n | undefined = avaluacio.totOk ? 'p3.msg.totOk' : avaluacio.missatge;
         const missatge = estabilitzador.push(candidat);
         estatAnalisi.publica({
@@ -132,23 +137,35 @@ export function useAnalisi({ video, analitzador, actiu, fluxId, config, delegat 
           mascara: mostra.mascara,
           landmarks: mostra.landmarks,
           fpsAnalisi: fps,
-          msPerFotograma: msMitja,
+          msPerFotograma: pressupost.msMitja,
           fpsVideo,
-          delegat
+          delegat,
+          temps,
+          nivell,
+          fpsObjectiu: pressupost.fps,
+          segmentacio: mostra.segmentacio
         });
         const sig = signatura(avaluacio, missatge);
         if (sig !== ultimaSignatura || t1 - ultimaUi >= MIN_ACTUALITZACIO_UI_MS) {
           // La regió d'estat només canvia de text quan canvia el missatge: aria-live no repeteix res.
           ultimaSignatura = sig;
           ultimaUi = t1;
-          setEstat({ avaluacio, missatge, error: false });
+          setEstat({ avaluacio, missatge, error: false, massaLent: false });
+        }
+        if (nivell === 'aturat') {
+          // Equip massa lent (>150 ms sostinguts): s'abandona l'anàlisi en directe; la captura manual continua.
+          console.warn(`[analisi] aturada: ${pressupost.msMitja.toFixed(0)} ms per fotograma de mitjana`);
+          aturat = true;
+          estatAnalisi.publica(undefined);
+          setEstat({ error: false, massaLent: true });
         }
       } catch (e) {
         console.warn('[analisi] error:', e instanceof Error ? e.message : String(e));
         errorsSeguits++;
         if (errorsSeguits >= ERRORS_SEGUITS_MAXIM) {
           aturat = true;
-          setEstat({ error: true });
+          estatAnalisi.publica(undefined);
+          setEstat({ error: true, massaLent: false });
         }
       }
     };

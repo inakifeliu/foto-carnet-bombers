@@ -1,5 +1,6 @@
 import type { IRetallCap } from '../captura/retallCap';
-import type { IAvaluacio, IMascara, IMesures, IPunt, IRectNorm } from './tipus';
+import type { NivellPressupost } from './pressupost';
+import type { IAvaluacio, IMascara, IMesures, IPunt, IRectNorm, ITempsPas } from './tipus';
 
 /**
  * Instantània de l'última anàlisi, publicada pel bucle d'anàlisi (P3) perquè el mode diagnòstic (RF-18) la mostri
@@ -27,6 +28,11 @@ export interface IInstantania {
   msPerFotograma: number;
   fpsVideo?: number;
   delegat?: 'GPU' | 'CPU';
+  /** Temps per pas (ms, mitjana mòbil), nivell del pressupost, fps objectiu actual i si hi ha segmentació. */
+  temps?: ITempsPas;
+  nivell?: NivellPressupost;
+  fpsObjectiu?: number;
+  segmentacio?: boolean;
 }
 
 type Oient = (i: IInstantania | undefined) => void;

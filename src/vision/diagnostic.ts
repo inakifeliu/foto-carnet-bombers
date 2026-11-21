@@ -11,7 +11,18 @@ export interface IDiagnosticJson {
   versio: string;
   dataCompilacio: string;
   generat: string;
-  rendiment: { fpsAnalisi: number; msPerFotograma: number; fpsVideo: number | null; delegat: string | null };
+  rendiment: {
+    fpsAnalisi: number;
+    msPerFotograma: number;
+    fpsVideo: number | null;
+    delegat: string | null;
+    /** Pressupost adaptatiu: nivell (`normal`, `reduit`) i fps objectiu. */
+    nivellPressupost: string | null;
+    fpsObjectiu: number | null;
+    /** Temps mitjà (ms) de cada pas: dibuix, Face Landmarker, segmentador i mètriques. */
+    tempsPerPas: { dibuix: number; landmarker: number; segmentador: number; metriques: number } | null;
+    segmentacio: 'activa' | 'noDisponible' | null;
+  };
   fotograma: { ample: number; alt: number } | null;
   mesures: IMesures | null;
   controls: Record<string, { estat: string; valor: number | null; missatge: string | null; puntuacio: number }>;
@@ -68,7 +79,18 @@ export function creaDiagnostic(
       fpsAnalisi: instantania ? arrodoneix(instantania.fpsAnalisi) : 0,
       msPerFotograma: instantania ? arrodoneix(instantania.msPerFotograma) : 0,
       fpsVideo: instantania?.fpsVideo === undefined ? null : arrodoneix(instantania.fpsVideo),
-      delegat: instantania?.delegat ?? null
+      delegat: instantania?.delegat ?? null,
+      nivellPressupost: instantania?.nivell ?? null,
+      fpsObjectiu: instantania?.fpsObjectiu ?? null,
+      tempsPerPas: instantania?.temps
+        ? {
+            dibuix: arrodoneix(instantania.temps.dibuix),
+            landmarker: arrodoneix(instantania.temps.landmarker),
+            segmentador: arrodoneix(instantania.temps.segmentador),
+            metriques: arrodoneix(instantania.temps.metriques)
+          }
+        : null,
+      segmentacio: instantania?.segmentacio === undefined ? null : instantania.segmentacio ? 'activa' : 'noDisponible'
     },
     fotograma: instantania ? { ample: instantania.ample, alt: instantania.alt } : null,
     mesures,

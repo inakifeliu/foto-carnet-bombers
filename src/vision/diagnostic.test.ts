@@ -41,7 +41,16 @@ describe('JSON de diagnòstic (RF-18)', () => {
     expect(j.versio).toBe('1.2.3');
     expect(j.dataCompilacio).toBe('2026-11-21');
     expect(j.generat).toBe('2026-11-21T10:00:00.000Z');
-    expect(j.rendiment).toEqual({ fpsAnalisi: 11.8765, msPerFotograma: 23.4567, fpsVideo: 29.97, delegat: 'GPU' });
+    expect(j.rendiment).toEqual({
+      fpsAnalisi: 11.8765,
+      msPerFotograma: 23.4567,
+      fpsVideo: 29.97,
+      delegat: 'GPU',
+      nivellPressupost: null,
+      fpsObjectiu: null,
+      tempsPerPas: null,
+      segmentacio: null
+    });
     expect(j.fotograma).toEqual({ ample: 640, alt: 360 });
     expect(j.mesures?.yaw).toBe(0);
     expect(Object.keys(j.controls)).toEqual([
@@ -133,5 +142,32 @@ describe('JSON de diagnòstic (RF-18)', () => {
     expect(revoca).toHaveBeenCalledWith('blob:diag');
     jest.useRealTimers();
     jest.restoreAllMocks();
+  });
+});
+
+describe('JSON de diagnòstic: temps per pas i pressupost', () => {
+  const config = CONFIG_PER_DEFECTE;
+
+  it('porta el temps de cada pas, el nivell del pressupost i l’estat de la segmentació', () => {
+    const base = instantania();
+    const j = creaDiagnostic(
+      {
+        ...base,
+        temps: { dibuix: 3.123456, landmarker: 18.5, segmentador: 9.25, metriques: 1.1 },
+        nivell: 'reduit',
+        fpsObjectiu: 8,
+        segmentacio: false
+      },
+      config,
+      '1',
+      '2026-11-21'
+    );
+    expect(j.rendiment.tempsPerPas).toEqual({ dibuix: 3.1235, landmarker: 18.5, segmentador: 9.25, metriques: 1.1 });
+    expect(j.rendiment.nivellPressupost).toBe('reduit');
+    expect(j.rendiment.fpsObjectiu).toBe(8);
+    expect(j.rendiment.segmentacio).toBe('noDisponible');
+    expect(creaDiagnostic({ ...base, segmentacio: true }, config, '1', '2026-11-21').rendiment.segmentacio).toBe(
+      'activa'
+    );
   });
 });

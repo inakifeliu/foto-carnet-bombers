@@ -50,6 +50,19 @@ const AnalisiEnDirecte: React.FC = () => {
               delegat: i.delegat ?? '?'
             })}
           </p>
+          {i.temps && (
+            <p className={styles.debugText} id="debug-temps">
+              {t('debug.temps', {
+                dibuix: fmt(i.temps.dibuix, 1),
+                landmarker: fmt(i.temps.landmarker, 1),
+                segmentador: fmt(i.temps.segmentador, 1),
+                metriques: fmt(i.temps.metriques, 1),
+                nivell: i.nivell ?? '?',
+                fpsObjectiu: i.fpsObjectiu ?? '?',
+                segmentacio: i.segmentacio === false ? 'no disponible' : 'activa'
+              })}
+            </p>
+          )}
           <ul className={styles.debugLlista} id="debug-controls">
             {ORDRE_PRIORITAT.map((clau) => {
               const c = i.avaluacio.controls[clau];

@@ -26,6 +26,12 @@ export interface IMascaraBruta {
   h: number;
 }
 
+/** Punt de la cara que sempre és persona (entre el front i la barbeta): decideix quina etiqueta de la màscara és «persona». */
+export function centreCaraMascara(landmarks: IPunt[]): { x: number; y: number } | undefined {
+  const g = geometriaCara(landmarks);
+  return g ? { x: g.centreX, y: (g.yFront + g.yBarbeta) / 2 } : undefined;
+}
+
 export interface IEntradaMesures {
   imatge: IImatgeRGBA;
   /** Landmarks de cada cara detectada (només se'n fa servir la primera quan n'hi ha exactament una). */
@@ -35,6 +41,8 @@ export interface IEntradaMesures {
   matriu?: IMatriu;
   /** Màscara de categories del segmentador (els valors no tenen per què significar «persona» = 1). */
   mascaraBruta?: IMascaraBruta;
+  /** Màscara ja normalitzada (p. ex. la de l'última segmentació, reaprofitada); té prioritat sobre `mascaraBruta`. */
+  mascara?: IMascara;
 }
 
 export interface IResultatMesures {
@@ -51,9 +59,15 @@ export interface IResultatMesures {
 
 /**
  * Converteix la màscara de categories en una màscara binària «persona = 1». L'etiqueta de persona no se suposa:
- * és la més freqüent en una petita finestra al centre de la cara (que sempre és persona).
+ * és la més freqüent en una petita finestra al centre de la cara (que sempre és persona). Les coordenades de `centre`
+ * són normalitzades (0..1) i es projecten sobre la mida PRÒPIA de la màscara (que pot ser més petita que el fotograma).
+ * Si `reutilitza` té un buffer de la mida justa, s'hi escriu (sense reservar memòria nova a cada fotograma).
  */
-export function normalitzaMascara(bruta: IMascaraBruta, centre: { x: number; y: number }): IMascara | undefined {
+export function normalitzaMascara(
+  bruta: IMascaraBruta,
+  centre: { x: number; y: number },
+  reutilitza?: IMascara
+): IMascara | undefined {
   if (bruta.w <= 0 || bruta.h <= 0 || bruta.data.length < bruta.w * bruta.h) {
     return undefined;
   }
@@ -76,7 +90,8 @@ export function normalitzaMascara(bruta: IMascaraBruta, centre: { x: number; y: 
       etiqueta = v;
     }
   });
-  const sortida = new Uint8Array(bruta.w * bruta.h);
+  const sortida =
+    reutilitza && reutilitza.data.length === bruta.w * bruta.h ? reutilitza.data : new Uint8Array(bruta.w * bruta.h);
   for (let i = 0; i < sortida.length; i++) {
     sortida[i] = bruta.data[i] === etiqueta ? 1 : 0;
   }
@@ -295,9 +310,11 @@ export function calculaMesures(
   mesures.torsVisible = tors.fraccioVisible;
 
   const resultat: IResultatMesures = { mesures, zonaTors: tors.visible, zonaCara };
-  const mascara = entrada.mascaraBruta
-    ? normalitzaMascara(entrada.mascaraBruta, { x: g.centreX, y: (g.yFront + g.yBarbeta) / 2 })
-    : undefined;
+  const mascara =
+    entrada.mascara ??
+    (entrada.mascaraBruta
+      ? normalitzaMascara(entrada.mascaraBruta, { x: g.centreX, y: (g.yFront + g.yBarbeta) / 2 })
+      : undefined);
   resultat.mascara = mascara;
 
   const retall = calculaRetallCap(landmarks, mascara, imatge.w, imatge.h, params);
