@@ -263,6 +263,13 @@ describe('Accessibilitat: estructura', () => {
     await act(async () => root.unmount());
   });
 
+  it('P3 sense anàlisi mostra la nota neutra (no promet captura automàtica)', async () => {
+    const { div, root } = await monta('P3Captura');
+    expect(div.querySelector('[data-nota-p3]')?.textContent).toBe(t('p3.notaSenseAnalisi'));
+    expect(div.textContent).not.toContain(t('p3.nota'));
+    await act(async () => root.unmount());
+  });
+
   it('P1 mostra una il·lustració decorativa per a cadascun dels 9 punts', async () => {
     expect(ICONES_INSTRUCCIONS).toHaveLength(9);
     const { div, root } = await monta('P1Instruccions');
