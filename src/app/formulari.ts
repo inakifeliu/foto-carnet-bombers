@@ -37,7 +37,7 @@ export function validaMatricula(valor: string, regexFont: string): IResultatMatr
   let regex: RegExp;
   try {
     // La regex és configurable per disseny (config.matriculaRegex).
-    regex = new RegExp('^(?:' + regexFont + ')$');
+    regex = compilaRegexMatricula(regexFont);
   } catch {
     return { valida: false, matricula, regexInvalida: true };
   }
@@ -53,11 +53,26 @@ export function nomFitxer(matricula: string): string {
   return matricula + '.jpg';
 }
 
-export type DiagnosticPlantilla = 'ok' | 'sensePlantilla' | 'noHttps';
+/**
+ * Hosts de Microsoft Forms acceptats per a l'URL del Forms (comparació EXACTA del host, mai per sufix:
+ * així `forms.office.com.exemple.cat` o `exemple.forms.office.com` no passen). Si Microsoft en
+ * canvia o n'afegeix, cal ampliar aquesta llista i tornar a compilar.
+ */
+export const HOSTS_FORMS: readonly string[] = ['forms.office.com', 'forms.microsoft.com', 'forms.cloud.microsoft'];
+
+/** Marcador de l'URL d'exemple (config.json) que encara no és el Forms real (Fase 5). */
+export const MARCADOR_FORMS_PROVISIONAL = 'XXXX';
+
+/** Embolcalla la regex de la matrícula exactament com la fa servir `validaMatricula`. */
+export function compilaRegexMatricula(regexFont: string): RegExp {
+  return new RegExp('^(?:' + regexFont + ')$');
+}
+
+export type DiagnosticPlantilla = 'ok' | 'sensePlantilla' | 'noHttps' | 'hostNoPermes';
 
 /**
  * Comprova la plantilla de l'URL del Forms: ha de contenir el marcador i, un cop substituït,
- * ser una URL absoluta amb l'esquema `https:`.
+ * ser una URL absoluta amb l'esquema `https:` i amb un host de Microsoft Forms (`HOSTS_FORMS`).
  */
 export function diagnosticaPlantilla(plantilla: string): DiagnosticPlantilla {
   if (typeof plantilla !== 'string' || plantilla.indexOf(MARCADOR_MATRICULA) === -1) {
@@ -65,15 +80,33 @@ export function diagnosticaPlantilla(plantilla: string): DiagnosticPlantilla {
   }
   try {
     const url = new URL(plantilla.split(MARCADOR_MATRICULA).join('0'));
-    return url.protocol === 'https:' ? 'ok' : 'noHttps';
+    if (url.protocol !== 'https:') {
+      return 'noHttps';
+    }
+    return HOSTS_FORMS.includes(url.hostname.toLowerCase()) ? 'ok' : 'hostNoPermes';
   } catch {
     return 'noHttps';
   }
 }
 
+export interface IAvaluacioForms {
+  /** Diagnòstic de la plantilla (`ok` si és correcta). */
+  diagnostic: DiagnosticPlantilla;
+  /** true si encara porta el marcador provisional `XXXX` (no és el Forms real; avís, no error). */
+  provisional: boolean;
+}
+
+/** Avaluació de la plantilla del Forms per al build: el mateix diagnòstic que l'app + detecció de `XXXX`. */
+export function avaluaPlantillaForms(plantilla: string): IAvaluacioForms {
+  return {
+    diagnostic: diagnosticaPlantilla(plantilla),
+    provisional: typeof plantilla === 'string' && plantilla.indexOf(MARCADOR_FORMS_PROVISIONAL) !== -1
+  };
+}
+
 /**
  * Construeix l'URL del Forms substituint `{MATRICULA}` per `encodeURIComponent(matricula)` (RF-12).
- * Retorna undefined si la plantilla és buida, no conté el marcador o no és `https:`.
+ * Retorna undefined si la plantilla és buida, no conté el marcador, no és `https:` o el host no és de Forms.
  */
 export function construeixUrlForms(plantilla: string, matricula: string): string | undefined {
   if (diagnosticaPlantilla(plantilla) !== 'ok') {

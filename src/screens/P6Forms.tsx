@@ -4,7 +4,7 @@ import { construeixUrlForms, diagnosticaPlantilla, nomFitxer } from '../app/form
 import { Boto } from '../components/Boto';
 import { Modal } from '../components/Modal';
 import { TextRic } from '../components/TextRic';
-import { t } from '../i18n';
+import { t, type ClauI18n } from '../i18n';
 import styles from '../styles/brand.module.css';
 
 /** `navigator.onLine === false` (i canvis en directe); sense l'API, es suposa connectat. */
@@ -21,6 +21,12 @@ function useSenseConnexio(): boolean {
   }, []);
   return senseConnexio;
 }
+
+const CLAU_DIAGNOSTIC: Record<string, ClauI18n> = {
+  noHttps: 'p6.urlNoHttps',
+  hostNoPermes: 'p6.urlHostNoPermes',
+  sensePlantilla: 'p6.sensePlantilla'
+};
 
 export const P6Forms: React.FC = () => {
   const { estat, config, dispatch } = useApp();
@@ -49,7 +55,7 @@ export const P6Forms: React.FC = () => {
       )}
       {!url && (
         <p className={styles.error} role="alert">
-          {t(diagnostic === 'noHttps' ? 'p6.urlNoHttps' : 'p6.sensePlantilla')}
+          {t(CLAU_DIAGNOSTIC[diagnostic] ?? 'p6.sensePlantilla')}
         </p>
       )}
       <div className={styles.accions}>

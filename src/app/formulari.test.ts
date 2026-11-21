@@ -1,4 +1,12 @@
-import { construeixUrlForms, diagnosticaPlantilla, esNomFitxerSegur, nomFitxer, validaMatricula } from './formulari';
+import {
+  avaluaPlantillaForms,
+  compilaRegexMatricula,
+  construeixUrlForms,
+  diagnosticaPlantilla,
+  esNomFitxerSegur,
+  nomFitxer,
+  validaMatricula
+} from './formulari';
 
 const REGEX = '^[0-9]{4,6}$';
 
@@ -69,15 +77,21 @@ describe('nomFitxer', () => {
 
 describe('construeixUrlForms', () => {
   it('substitueix el marcador', () => {
-    expect(construeixUrlForms('https://f/?id=X&r={MATRICULA}', '12345')).toBe('https://f/?id=X&r=12345');
+    expect(construeixUrlForms('https://forms.office.com/?id=X&r={MATRICULA}', '12345')).toBe(
+      'https://forms.office.com/?id=X&r=12345'
+    );
   });
 
   it('codifica la matrícula amb encodeURIComponent', () => {
-    expect(construeixUrlForms('https://f/?r={MATRICULA}', 'A B&C/1')).toBe('https://f/?r=A%20B%26C%2F1');
+    expect(construeixUrlForms('https://forms.office.com/?r={MATRICULA}', 'A B&C/1')).toBe(
+      'https://forms.office.com/?r=A%20B%26C%2F1'
+    );
   });
 
   it('substitueix totes les aparicions', () => {
-    expect(construeixUrlForms('https://f/{MATRICULA}-{MATRICULA}', '7')).toBe('https://f/7-7');
+    expect(construeixUrlForms('https://forms.office.com/{MATRICULA}-{MATRICULA}', '7')).toBe(
+      'https://forms.office.com/7-7'
+    );
   });
 
   it('rebutja plantilles que no són https: (http, javascript, data, relatives)', () => {
@@ -85,19 +99,51 @@ describe('construeixUrlForms', () => {
     expect(construeixUrlForms('javascript:alert({MATRICULA})', '1')).toBeUndefined();
     expect(construeixUrlForms('data:text/html,{MATRICULA}', '1')).toBeUndefined();
     expect(construeixUrlForms('/forms?r={MATRICULA}', '1')).toBeUndefined();
-    expect(construeixUrlForms('HTTPS://f/?r={MATRICULA}', '1')).toBe('HTTPS://f/?r=1');
+    expect(construeixUrlForms('HTTPS://forms.office.com/?r={MATRICULA}', '1')).toBe('HTTPS://forms.office.com/?r=1');
   });
 
   it('diagnosticaPlantilla distingeix els motius', () => {
-    expect(diagnosticaPlantilla('https://f/?r={MATRICULA}')).toBe('ok');
-    expect(diagnosticaPlantilla('https://f/?r=1')).toBe('sensePlantilla');
+    expect(diagnosticaPlantilla('https://forms.office.com/?r={MATRICULA}')).toBe('ok');
+    expect(diagnosticaPlantilla('https://forms.office.com/?r=1')).toBe('sensePlantilla');
     expect(diagnosticaPlantilla('')).toBe('sensePlantilla');
     expect(diagnosticaPlantilla('http://f/?r={MATRICULA}')).toBe('noHttps');
     expect(diagnosticaPlantilla('no es url {MATRICULA}')).toBe('noHttps');
+    expect(diagnosticaPlantilla('https://exemple.cat/?r={MATRICULA}')).toBe('hostNoPermes');
+    expect(diagnosticaPlantilla('https://forms.microsoft.com/x?r={MATRICULA}')).toBe('ok');
+    expect(diagnosticaPlantilla('https://forms.cloud.microsoft/x?r={MATRICULA}')).toBe('ok');
+    // Host exacte, mai per sufix ni per subdomini.
+    expect(diagnosticaPlantilla('https://forms.office.com.exemple.cat/?r={MATRICULA}')).toBe('hostNoPermes');
+    expect(diagnosticaPlantilla('https://exemple.forms.office.com/?r={MATRICULA}')).toBe('hostNoPermes');
+    expect(diagnosticaPlantilla('https://forms.office.com@exemple.cat/?r={MATRICULA}')).toBe('hostNoPermes');
+    expect(construeixUrlForms('https://exemple.cat/?r={MATRICULA}', '1')).toBeUndefined();
   });
 
   it('retorna undefined si falta el marcador o la plantilla és buida', () => {
-    expect(construeixUrlForms('https://f/?r=XXXX', '12345')).toBeUndefined();
+    expect(construeixUrlForms('https://forms.office.com/?r=XXXX', '12345')).toBeUndefined();
     expect(construeixUrlForms('', '12345')).toBeUndefined();
+  });
+});
+
+describe('avaluaPlantillaForms (validació del build)', () => {
+  it('el marcador XXXX és provisional però la plantilla és correcta (avís, no error)', () => {
+    expect(avaluaPlantillaForms('https://forms.office.com/Pages/ResponsePage.aspx?id=XXXX&rYYYY={MATRICULA}')).toEqual({
+      diagnostic: 'ok',
+      provisional: true
+    });
+  });
+
+  it('una plantilla real no és provisional; una de dolenta dona el diagnòstic', () => {
+    expect(avaluaPlantillaForms('https://forms.office.com/r/abc?x={MATRICULA}')).toEqual({
+      diagnostic: 'ok',
+      provisional: false
+    });
+    expect(avaluaPlantillaForms('http://forms.office.com/r?x={MATRICULA}').diagnostic).toBe('noHttps');
+    expect(avaluaPlantillaForms('https://forms.office.com/r?x=1').diagnostic).toBe('sensePlantilla');
+    expect(avaluaPlantillaForms('https://tercer.com/r?x={MATRICULA}').diagnostic).toBe('hostNoPermes');
+  });
+
+  it("la regex de la matrícula es valida amb el mateix embolcall que l'app", () => {
+    expect(compilaRegexMatricula('[0-9]+').source).toBe('^(?:[0-9]+)$');
+    expect(() => compilaRegexMatricula('([')).toThrow();
   });
 });

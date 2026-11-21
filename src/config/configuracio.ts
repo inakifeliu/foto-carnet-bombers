@@ -1,3 +1,4 @@
+import { compilaRegexMatricula } from '../app/formulari';
 import defaultConfigJson from './config.default.json';
 
 export interface IConfig {
@@ -71,7 +72,8 @@ export function validaRegex(font: string | undefined): boolean {
     return true;
   }
   try {
-    return new RegExp(font) instanceof RegExp;
+    // Es valida amb el mateix embolcall `^(?:…)$` que usa l'app (validaMatricula).
+    return compilaRegexMatricula(font) instanceof RegExp;
   } catch {
     return false;
   }

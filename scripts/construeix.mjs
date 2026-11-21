@@ -4,6 +4,8 @@
  *
  *  1. Valida config/config.json amb la mateixa lògica que l'aplicació (resolConfig). Qualsevol avís
  *     fa fallar la compilació: ja no hi ha panell de propietats, la configuració ha de ser correcta aquí.
+ *     També valida l'URL del Forms (https, {MATRICULA}, host de Microsoft Forms exacte) i la regex de
+ *     la matrícula amb l'embolcall `^(?:…)$` de l'app. El marcador provisional `XXXX` només dona un avís.
  *  2. Empaqueta src/main.tsx amb esbuild (IIFE, React de producció, CSS en mòdul), amb:
  *     - el pegat de telemetria de MediaPipe (scripts/mediapipe-sense-telemetria.mjs; falla si no s'aplica),
  *     - els logos com a URI data: base64 (bytes sense modificar),
@@ -26,7 +28,13 @@ const dins = (...p) => path.join(arrel, ...p);
 const pkg = JSON.parse(fs.readFileSync(dins('package.json'), 'utf8'));
 const VERSIO = pkg.version;
 const epoch = process.env.SOURCE_DATE_EPOCH ? Number(process.env.SOURCE_DATE_EPOCH) * 1000 : Date.now();
-const DATA_COMPILACIO = new Date(epoch).toISOString().slice(0, 10);
+// Data en hora LOCAL de la màquina (no UTC): una compilació a les 00:30 d'Europe/Madrid porta el dia correcte.
+const dCompilacio = new Date(epoch);
+const DATA_COMPILACIO = [
+  dCompilacio.getFullYear(),
+  String(dCompilacio.getMonth() + 1).padStart(2, '0'),
+  String(dCompilacio.getDate()).padStart(2, '0')
+].join('-');
 const NOM_FITXER = `foto-carnet-bombers-v${VERSIO}.html`;
 const DIST = dins('dist');
 
@@ -53,11 +61,27 @@ const MISSATGES_AVIS = {
   configInvalida: "la configuració no s'ha pogut llegir"
 };
 
+const MISSATGES_FORMS = {
+  sensePlantilla: "falta el marcador {MATRICULA} a l'URL",
+  noHttps: "l'URL no és vàlida o no és https:",
+  hostNoPermes:
+    "el host no és d'un servidor de Microsoft Forms (forms.office.com, forms.microsoft.com, forms.cloud.microsoft)"
+};
+
+/** FCB_CONFIG (ruta alternativa a config/config.json): l'usen els tests i `npm run verifica`. */
+function rutaConfigEfectiva() {
+  return process.env.FCB_CONFIG ? path.resolve(process.env.FCB_CONFIG) : dins('config/config.json');
+}
+
 // --- 1. Configuració ---------------------------------------------------------------------------
 async function validaConfig() {
   // La validació viu a TypeScript (src/config/configuracio.ts): es compila al vol i s'importa.
   const r = await build({
-    entryPoints: [dins('src/config/configuracio.ts')],
+    stdin: {
+      contents: "export * from './src/config/configuracio.ts'; export * from './src/app/formulari.ts';",
+      resolveDir: arrel,
+      loader: 'ts'
+    },
     bundle: true,
     format: 'esm',
     platform: 'node',
@@ -65,16 +89,27 @@ async function validaConfig() {
     logLevel: 'silent'
   });
   const modul = await import('data:text/javascript;base64,' + Buffer.from(r.outputFiles[0].text).toString('base64'));
-  // FCB_CONFIG només l'usen els tests per provar que una configuració invàlida atura la compilació.
-  const rutaConfig = process.env.FCB_CONFIG ? path.resolve(process.env.FCB_CONFIG) : dins('config/config.json');
+  const rutaConfig = rutaConfigEfectiva();
   if (!fs.existsSync(rutaConfig)) {
     falla('no existeix config/config.json');
   }
   const { config, avisos } = modul.resolConfigDeText(fs.readFileSync(rutaConfig, 'utf8'));
-  if (avisos.length > 0) {
+  const errors = avisos.map((a) => `${a.camp ? a.camp + ': ' : ''}${MISSATGES_AVIS[a.codi] ?? a.codi}`);
+  // URL del Forms: mateix diagnòstic que l'app. XXXX = avís visible, qualsevol altre problema = error.
+  const forms = modul.avaluaPlantillaForms(config.forms.urlPlantilla);
+  if (forms.diagnostic !== 'ok') {
+    errors.push(`forms.urlPlantilla: ${MISSATGES_FORMS[forms.diagnostic] ?? forms.diagnostic}`);
+  }
+  if (errors.length > 0) {
     console.error('construeix: ERROR: config/config.json no és vàlid (la compilació no continua):');
-    avisos.forEach((a) => console.error(`  - ${a.camp ? a.camp + ': ' : ''}${MISSATGES_AVIS[a.codi] ?? a.codi}`));
+    errors.forEach((e) => console.error(`  - ${e}`));
     process.exit(1);
+  }
+  if (forms.provisional) {
+    console.warn(
+      "construeix: AVÍS: l'URL del Forms (forms.urlPlantilla) encara porta el marcador provisional XXXX: " +
+        'no és el Forms real. Cal substituir-la abans de distribuir (Fase 5).'
+    );
   }
   return config;
 }
@@ -182,6 +217,20 @@ function preparaRecursos() {
 const escapaHtml = (s) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
+/**
+ * Escapament segur per incrustar contingut dins un <script>: ni `</script` (en qualsevol combinació
+ * de majúscules) ni `<!--` poden aparèixer tal qual. En JS es trenquen amb una barra (dins d'una
+ * cadena equival al mateix caràcter); en JSON, amb un escapament unicode (la barra davant de `!`
+ * no és un escapament JSON vàlid).
+ */
+function escapaPerScript(text) {
+  return text.replace(/<\/script/gi, (m) => '<\\' + m.slice(1)).replace(/<!--/g, '<\\!--');
+}
+
+function escapaJsonPerScript(text) {
+  return text.replace(/<(\/script|!--)/gi, (_m, resta) => '\\u003c' + resta);
+}
+
 async function principal() {
   const inici = Date.now();
   const config = await validaConfig();
@@ -196,7 +245,7 @@ async function principal() {
   }
 
   // Evita tancar un <script>/<style> inline per accident i les seqüències "<!--" dins del JS.
-  const jsSegur = js.replace(/<\/script/gi, '<\\/script').replace(/<!--/g, '<\\!--');
+  const jsSegur = escapaPerScript(js);
   const cssSegur = css.replace(/<\/style/gi, '<\\/style');
 
   const plantilla = fs.readFileSync(dins('src/index.html'), 'utf8');
@@ -205,7 +254,7 @@ async function principal() {
     .replace('@@CSS@@', () => cssSegur)
     .split('@@MISSATGE_RF19@@')
     .join(escapaHtml(missatgeRf19))
-    .replace('@@MANIFEST@@', () => JSON.stringify(manifest))
+    .replace('@@MANIFEST@@', () => escapaJsonPerScript(JSON.stringify(manifest)))
     .replace('@@RECURSOS@@', () => blocs)
     .replace('@@JS@@', () => jsSegur);
   if (/@@[A-Z_0-9]+@@/.test(html.replace(jsSegur, '').replace(cssSegur, ''))) {

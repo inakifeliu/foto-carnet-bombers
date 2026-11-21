@@ -41,6 +41,17 @@ describe('validació de la configuració en compilar (construeix.mjs)', () => {
     expect(compilaAmb('{"sortida":{"ppp":450}}').status).toBe(1);
   });
 
+  it("l'URL del Forms ha de ser https, tenir {MATRICULA} i un host de Microsoft Forms", () => {
+    const forms = (urlPlantilla: string): string => JSON.stringify({ forms: { urlPlantilla } });
+    const http = compilaAmb(forms('http://forms.office.com/r?x={MATRICULA}'));
+    expect(http.status).toBe(1);
+    expect(http.sortida).toContain('forms.urlPlantilla');
+    expect(compilaAmb(forms('https://forms.office.com/r?x=1')).sortida).toContain('{MATRICULA}');
+    const host = compilaAmb(forms('https://forms.office.com.exemple.cat/r?x={MATRICULA}'));
+    expect(host.status).toBe(1);
+    expect(host.sortida).toContain('Microsoft Forms');
+  });
+
   it('un JSON trencat fa fallar la compilació', () => {
     const r = compilaAmb('{ trencat');
     expect(r.status).toBe(1);
