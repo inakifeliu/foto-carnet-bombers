@@ -14,6 +14,8 @@
   --color-error: #b3261e;
   /* Text verd sobre blanc (AA): el verd de l'estat (--color-ok) només és per a punts i vores. */
   --color-ok-text: #146c2e;
+  /* Blau del polo de l'uniforme (només per a la il·lustració de P1). */
+  --color-polo: #1f4e8c;
   --color-vora: #d6d6d6;
   --color-gris-sense-dades: #767676;
   --color-cortina: rgba(0, 0, 0, 0.55);
@@ -146,12 +148,12 @@
   margin-bottom: 24px;
 }
 
-/* Espai de protecció >= 10% de la mida del logo (96 px de costat -> 10 px de marge). */
+/* Espai de protecció >= 10% de la mida del logo: el logo fa 96 px d'alçada i el marge és de 10 px. */
 .imgBenvinguda {
   display: block;
   height: 96px;
   width: auto;
-  padding: 10px;
+  margin: 10px;
 }
 
 /* --- Botons ---------------------------------------------------------------- */
@@ -245,6 +247,14 @@
 .icAccent {
   fill: none;
   stroke: var(--bcn-vermell);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icPolo {
+  fill: var(--color-polo);
+  stroke: var(--color-text);
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -490,13 +500,6 @@
 .puntuacio {
   margin: 8px 0 0;
   font-weight: 700;
-}
-
-.etiquetaRecomanada {
-  margin: 4px 0 0;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--bcn-vermell-text);
 }
 
 .miniaturaImg {

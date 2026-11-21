@@ -113,6 +113,8 @@ describe('Contrast AA de les parelles de colors', () => {
     // Traços, vores i punts (>= 3:1 sobre blanc, WCAG 1.4.11). L'ambre només es fa servir en un punt que sempre
     // va acompanyat del text de l'estat, per això no hi és.
     ['--bcn-vermell', '--bcn-blanc'],
+    // Blau del polo (il·lustració de P1) i el seu traç fosc.
+    ['--color-polo', '--bcn-blanc'],
     ['--color-ok', '--bcn-blanc'],
     ['--color-error', '--bcn-blanc'],
     ['--color-gris-sense-dades', '--bcn-blanc'],

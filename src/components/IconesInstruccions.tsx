@@ -12,12 +12,12 @@ const Dibuix: React.FC<{ children?: React.ReactNode }> = ({ children }) => (
   </svg>
 );
 
-/** 1. Fons blanc i llis: una paret (vermell) amb una persona al davant. */
+/** 1. Fons blanc i llis: una paret clara amb una persona al davant (espatlles en vermell). */
 const Fons: React.FC = () => (
   <Dibuix>
-    <rect x="6" y="6" width="36" height="36" rx="2" className={styles.icAccent} />
+    <rect x="6" y="6" width="36" height="36" rx="2" className={styles.icOmple} />
     <circle cx="24" cy="21" r="5" className={styles.icOmple} />
-    <path d="M14 42 C14 32 34 32 34 42" className={styles.icOmple} />
+    <path d="M14 42 C14 32 34 32 34 42" className={styles.icAccent} />
   </Dibuix>
 );
 
@@ -30,10 +30,10 @@ const Llum: React.FC = () => (
   </Dibuix>
 );
 
-/** 3. Polo de l'uniforme: una samarreta amb coll i obertura (vermell). */
+/** 3. Polo de l'uniforme: una samarreta blava amb coll i obertura (vermell). */
 const Polo: React.FC = () => (
   <Dibuix>
-    <path d="M17 7 L5 13 L9 22 L15 20 V41 H33 V20 L39 22 L43 13 L31 7 C29 12 19 12 17 7 Z" className={styles.icOmple} />
+    <path d="M17 7 L5 13 L9 22 L15 20 V41 H33 V20 L39 22 L43 13 L31 7 C29 12 19 12 17 7 Z" className={styles.icPolo} />
     <path d="M24 11 V22" className={styles.icAccent} />
   </Dibuix>
 );
