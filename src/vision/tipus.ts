@@ -1,7 +1,10 @@
 import type { ClauI18n } from '../i18n';
 
-/** Estat d'un control de qualitat. `cap` = no es pot avaluar (p. ex. sense cara). */
-export type EstatControl = 'ok' | 'avis' | 'error' | 'cap';
+/**
+ * Estat d'un control de qualitat. `cap` = no es pot avaluar ara (p. ex. sense cara); `noDisp` = no es pot avaluar
+ * en aquest equip (p. ex. sense segmentador): no compta per a `totOk` ni per a la puntuació.
+ */
+export type EstatControl = 'ok' | 'avis' | 'error' | 'cap' | 'noDisp';
 
 /**
  * Controls de RF-05. L'ordre d'aquesta llista ÉS la prioritat dels missatges de la spec:
@@ -99,6 +102,14 @@ export const CLAUS_MESURES: ClauMesura[] = [
   'polo',
   'torsVisible'
 ];
+
+/** Temps (ms) de cada pas d'una anàlisi: dibuix (reducció + lectura de píxels), Face Landmarker, segmentador i mètriques. */
+export interface ITempsPas {
+  dibuix: number;
+  landmarker: number;
+  segmentador: number;
+  metriques: number;
+}
 
 /** Resultat de l'avaluació d'un control. */
 export interface IControl {

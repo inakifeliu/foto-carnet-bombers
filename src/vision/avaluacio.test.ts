@@ -236,3 +236,59 @@ describe('calculaPuntuacio', () => {
     expect(calculaPuntuacio(avP({ ombra: 0.9 }), nomesOrientacio)).toBe(100);
   });
 });
+
+describe('avalua: «no disponible» sense segmentació', () => {
+  const sense = (m: Partial<IMesures> = {}): ReturnType<typeof avalua> =>
+    avalua({ ...mesuresBones(), ...m }, LLINDARS, { segmentacio: false });
+
+  it('fons, polo i espatlles passen a noDisp; els altres no', () => {
+    const r = sense();
+    (['fons', 'polo', 'espatlles'] as ClauControl[]).forEach((c) => expect(r.controls[c].estat).toBe('noDisp'));
+    (['cara', 'distancia', 'centrat', 'orientacio', 'llum', 'ombra', 'ullsBoca', 'nitidesa'] as ClauControl[]).forEach(
+      (c) => expect(r.controls[c].estat).toBe('ok')
+    );
+  });
+
+  it('no compten per a totOk: la resta en verd és «Perfecte», encara que les mesures del fons siguin dolentes', () => {
+    const r = sense({ fons: 0.1, polo: 0, torsVisible: 0 });
+    expect(r.totOk).toBe(true);
+    expect(r.missatge).toBeUndefined();
+  });
+
+  it('un control real en vermell continua impedint totOk i dona el seu missatge', () => {
+    const r = sense({ llum: 20 });
+    expect(r.totOk).toBe(false);
+    expect(r.missatge).toBe('p3.msg.massaFosc');
+  });
+
+  it('un noDisp no genera cap avís de foto', () => {
+    expect(missatgesAvis(sense({ fons: 0.1, polo: 0 }))).toEqual([]);
+  });
+
+  it('sense cara també es veu «no disponible» (i la cara en error)', () => {
+    const r = avalua({ nCares: 0 }, LLINDARS, { segmentacio: false });
+    expect(r.controls.cara.estat).toBe('error');
+    expect(r.controls.fons.estat).toBe('noDisp');
+    expect(r.controls.distancia.estat).toBe('cap');
+    expect(r.totOk).toBe(false);
+  });
+
+  it('amb segmentació (per defecte o explícita) els controls són els de sempre', () => {
+    expect(avalua(mesuresBones(), LLINDARS, { segmentacio: true }).controls.fons.estat).toBe('ok');
+    expect(avalua({ ...mesuresBones(), fons: 0.2 }, LLINDARS).controls.fons.estat).toBe('error');
+  });
+
+  it('la puntuació exclou els noDisp i repondera els altres pesos', () => {
+    // Tot perfecte tret de les mesures de màscara, que serien dolentes: sense màscara no han de penalitzar.
+    const dolentesMascara = { ...mesuresPerfectes(), fons: 0, polo: 0, torsVisible: 0 };
+    expect(calculaPuntuacio(avalua(dolentesMascara, LLINDARS, { segmentacio: false }), PESOS)).toBe(100);
+    expect(calculaPuntuacio(avalua(dolentesMascara, LLINDARS), PESOS)).toBeLessThan(90);
+  });
+
+  it('amb un control real dolent, la puntuació es calcula només amb els pesos que queden', () => {
+    // L’orientació (pes 2) a 0 pesa més quan hi ha menys controls en joc: el resultat és pitjor.
+    const amb = calculaPuntuacio(avalua({ ...mesuresPerfectes(), yaw: 40 }, LLINDARS), PESOS);
+    const sense = calculaPuntuacio(avalua({ ...mesuresPerfectes(), yaw: 40 }, LLINDARS, { segmentacio: false }), PESOS);
+    expect(sense).toBeLessThan(amb);
+  });
+});

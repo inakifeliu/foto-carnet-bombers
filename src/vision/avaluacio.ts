@@ -17,9 +17,23 @@ import {
   type IMesures
 } from './tipus';
 
-const GRAVETAT: Record<EstatControl, number> = { ok: 0, cap: 1, avis: 2, error: 3 };
+/** Controls que necessiten la màscara de segmentació. */
+const CONTROLS_AMB_MASCARA: ClauControl[] = ['fons', 'polo', 'espatlles'];
+
+const GRAVETAT: Record<EstatControl, number> = { ok: 0, noDisp: 0, cap: 1, avis: 2, error: 3 };
 
 const sensePunts = (): IControl => ({ estat: 'cap', puntuacio: 0 });
+
+/** Control que en aquest equip no es pot avaluar: no compta ni per a `totOk` ni per a la puntuació. */
+const noDisponible = (): IControl => ({ estat: 'noDisp', puntuacio: 0 });
+
+/** Què es pot mesurar en aquest equip/moment (només la segmentació pot faltar). */
+export interface IDisponibilitat {
+  /** Fals si no hi ha segmentador (no s'ha pogut carregar o s'ha desactivat per errors repetits). */
+  segmentacio: boolean;
+}
+
+const TOT_DISPONIBLE: IDisponibilitat = { segmentacio: true };
 
 function control(a: IAvaluacioLlindar, valor: number, missatge: ClauI18n): IControl {
   return {
@@ -55,8 +69,12 @@ function combina(candidats: ICandidat[], valorPrincipal: number): IControl {
   };
 }
 
-/** Avalua totes les mesures (instantànies o suavitzades) i en treu el missatge prioritari. */
-export function avalua(m: IMesures, ll: ILlindars): IAvaluacio {
+/**
+ * Avalua totes les mesures (instantànies o suavitzades) i en treu el missatge prioritari. Sense segmentació, els
+ * controls que en depenen (fons, polo i espatlles/tors) queden «no disponibles» (es mostren en gris i s'exclouen de
+ * `totOk` i de la puntuació).
+ */
+export function avalua(m: IMesures, ll: ILlindars, disponibilitat: IDisponibilitat = TOT_DISPONIBLE): IAvaluacio {
   const marge = ll.margeAmbar;
   const controls = {} as Record<ClauControl, IControl>;
 
@@ -71,10 +89,11 @@ export function avalua(m: IMesures, ll: ILlindars): IAvaluacio {
           puntuacio: 0
         };
 
+  const senseMascara = !disponibilitat.segmentacio;
   if (m.nCares !== 1) {
     ORDRE_PRIORITAT.forEach((clau) => {
       if (clau !== 'cara') {
-        controls[clau] = sensePunts();
+        controls[clau] = senseMascara && CONTROLS_AMB_MASCARA.includes(clau) ? noDisponible() : sensePunts();
       }
     });
     return resumeix(controls);
@@ -131,8 +150,9 @@ export function avalua(m: IMesures, ll: ILlindars): IAvaluacio {
         })();
 
   // 5.6 Fons blanc (sense fons a la zona = res a jutjar: «cap», amb puntuació neutra)
-  controls.fons =
-    m.fons === undefined
+  controls.fons = senseMascara
+    ? noDisponible()
+    : m.fons === undefined
       ? { estat: 'cap', puntuacio: 0.5 }
       : control(avaluaMinim(m.fons, ll.fonsBlancMin, marge, 1), m.fons, 'p3.msg.fonsNoBlanc');
 
@@ -141,14 +161,16 @@ export function avalua(m: IMesures, ll: ILlindars): IAvaluacio {
     m.ombra === undefined ? sensePunts() : control(avaluaMaxim(m.ombra, ll.ombraMax, marge), m.ombra, 'p3.msg.ombra');
 
   // 5.10 Polo blau
-  controls.polo =
-    m.polo === undefined
+  controls.polo = senseMascara
+    ? noDisponible()
+    : m.polo === undefined
       ? sensePunts()
       : control(avaluaMinim(m.polo, ll.poloProporcioMin, marge, 1), m.polo, 'p3.msg.polo');
 
   // 5.11 Espatlles dins el fotograma
-  controls.espatlles =
-    m.torsVisible === undefined
+  controls.espatlles = senseMascara
+    ? noDisponible()
+    : m.torsVisible === undefined
       ? sensePunts()
       : control(avaluaMinim(m.torsVisible, ll.torsVisibleMin, marge, 1), m.torsVisible, 'p3.msg.espatlles');
 
@@ -198,7 +220,7 @@ function resumeix(controls: Record<ClauControl, IControl>): IAvaluacio {
       break;
     }
   }
-  const totOk = ORDRE_PRIORITAT.every((clau) => controls[clau].estat === 'ok');
+  const totOk = ORDRE_PRIORITAT.every((clau) => controls[clau].estat === 'ok' || controls[clau].estat === 'noDisp');
   return { controls, missatge, totOk };
 }
 
@@ -231,6 +253,7 @@ const PES_DE: Record<Exclude<ClauControl, 'cara'>, keyof IPesos> = {
 /**
  * Puntuació de qualitat 0-100: mitjana ponderada (`pesosPuntuacio`) de la «distància al llindar» de cada control
  * (`puntuacioControl`), menys la penalització (punts) per retall fora del fotograma. Sense exactament una cara, 0.
+ * Els controls «no disponibles» (sense segmentació) s'exclouen i els pesos dels altres es reponderen.
  */
 export function calculaPuntuacio(av: IAvaluacio, pesos: IPesos, penalitzacio = 0): number {
   if (av.controls.cara.estat !== 'ok') {
@@ -240,7 +263,7 @@ export function calculaPuntuacio(av: IAvaluacio, pesos: IPesos, penalitzacio = 0
   let pes = 0;
   (Object.keys(PES_DE) as (keyof typeof PES_DE)[]).forEach((clau) => {
     const w = pesos[PES_DE[clau]];
-    if (w > 0) {
+    if (w > 0 && av.controls[clau].estat !== 'noDisp') {
       suma += w * av.controls[clau].puntuacio;
       pes += w;
     }

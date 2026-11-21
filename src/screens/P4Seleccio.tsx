@@ -43,6 +43,11 @@ export const P4Seleccio: React.FC = () => {
                   {foto.puntuacio === undefined ? t('p4.senseAnalisi') : t('p4.puntuacio', { punts: foto.puntuacio })}
                 </p>
                 {recomanada && <p className={styles.recomanada}>{t('p4.recomanada')}</p>}
+                {foto.puntuacio !== undefined && !(foto.avisos && foto.avisos.length > 0) && (
+                  <p className={styles.nota} data-sense-avisos="">
+                    {t('p4.cap')}
+                  </p>
+                )}
                 {foto.avisos && foto.avisos.length > 0 && (
                   <ul className={styles.avisosFoto} aria-label={t('p4.avisos')} data-avisos-foto="">
                     {foto.avisos.map((a) => (

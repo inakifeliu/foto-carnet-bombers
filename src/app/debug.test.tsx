@@ -14,6 +14,7 @@ const FUNCIONALITATS = {
   webAssembly: true,
   decompressionStream: true,
   webGL2: true,
+  webGL: true,
   compatible: true
 };
 

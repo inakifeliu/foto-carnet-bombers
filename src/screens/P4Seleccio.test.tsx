@@ -14,6 +14,7 @@ const FUNCIONALITATS = {
   webAssembly: true,
   decompressionStream: true,
   webGL2: true,
+  webGL: true,
   compatible: true
 };
 
@@ -102,6 +103,9 @@ describe('P4: puntuació real i avisos', () => {
     expect(items[2].textContent).toContain(t('p3.msg.apropa'));
     expect(items[2].textContent).toContain(t('avis.retallFora'));
     expect(items[1].querySelector('[data-avisos-foto]')).toBeNull();
+    // Sense avisos (amb puntuació): «Sense avisos»; amb avisos, no.
+    expect(items[1].textContent).toContain(t('p4.cap'));
+    expect(items[0].textContent).not.toContain(t('p4.cap'));
     await act(async () => root.unmount());
   });
 

@@ -28,6 +28,7 @@ const FUNCIONALITATS = {
   webAssembly: true,
   decompressionStream: true,
   webGL2: true,
+  webGL: true,
   compatible: true
 };
 
@@ -42,14 +43,17 @@ const Salta: React.FC<{ endavant: number }> = ({ endavant }) => {
   return null;
 };
 
-function monta(endavant: number): { div: HTMLDivElement; root: Root } {
+function monta(
+  endavant: number,
+  funcionalitats: typeof FUNCIONALITATS = FUNCIONALITATS
+): { div: HTMLDivElement; root: Root } {
   const div = document.createElement('div');
   document.body.appendChild(div);
   const root = createRoot(div);
   (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
   void act(() => {
     root.render(
-      <ProveidorApp config={CONFIG_PER_DEFECTE} funcionalitats={FUNCIONALITATS}>
+      <ProveidorApp config={CONFIG_PER_DEFECTE} funcionalitats={funcionalitats}>
         <Salta endavant={endavant} />
         <Contingut />
       </ProveidorApp>
@@ -101,7 +105,10 @@ const mostra = (mesures: IMesures): IMostra => ({
   mesures,
   ample: 640,
   alt: 360,
-  landmarks: mesures.nCares === 1 ? creaLandmarks() : undefined
+  landmarks: mesures.nCares === 1 ? creaLandmarks() : undefined,
+  temps: { dibuix: 1, landmarker: 2, segmentador: 0, metriques: 1 },
+  segmentat: false,
+  segmentacio: true
 });
 
 /** Analitzador simulat: la mostra que torna es pot canviar durant la prova. */
@@ -135,13 +142,20 @@ const avanca = (ms: number): Promise<void> =>
   });
 
 /** Munta P3 amb models simulats carregats i un analitzador fals. */
-async function montaP3(inicial: IMesures): Promise<{
+async function montaP3(
+  inicial: IMesures,
+  perfeccionaMostra?: (m: IMostra) => IMostra
+): Promise<{
   div: HTMLDivElement;
   root: Root;
   video: HTMLVideoElement;
   an: ReturnType<typeof creaFalsAnalitzador>;
 }> {
   const an = creaFalsAnalitzador(inicial);
+  if (perfeccionaMostra) {
+    const original = an.analitza.getMockImplementation() as () => IMostra;
+    an.analitza.mockImplementation(() => perfeccionaMostra(original()));
+  }
   mockCarregaModels.mockResolvedValue({ landmarker: {}, segmenter: {}, delegat: 'GPU', ms: 120 });
   mockCreaAnalitzador.mockReturnValue(an);
   posaCamera();
@@ -426,5 +440,156 @@ describe('P3 Fase 2: mode diagnòstic', () => {
     expect(items).toHaveLength(ORDRE_PRIORITAT.length);
     expect(b.div.querySelector('#debug-rendiment')?.textContent).toContain('GPU');
     await act(async () => b.root.unmount());
+  });
+});
+
+describe('P3 Fase 2: sense WebGL (RF-17)', () => {
+  const SENSE_WEBGL = { ...FUNCIONALITATS, webGL2: false, webGL: false };
+
+  it('NO carrega els models, ho diu directament i la captura manual continua funcionant', async () => {
+    posaCamera();
+    const { div, root } = monta(3, SENSE_WEBGL);
+    await act(async () => {});
+    await act(async () => {});
+    expect(mockCarregaModels).not.toHaveBeenCalled();
+    expect(mockCreaAnalitzador).not.toHaveBeenCalled();
+    expect(div.querySelector('[data-analisi-no-disponible]')?.textContent).toBe(t('p3.senseWebgl'));
+    expect(div.querySelector('[data-carregant-models]')).toBeNull();
+    expect(div.querySelector('[data-semafors]')).toBeNull();
+    await donaFotograma(div.querySelector('video') as HTMLVideoElement);
+    await act(async () => botoText(div, t('p3.feta'))?.click());
+    await act(async () => {});
+    // Sense anàlisi no hi ha res a confirmar: la foto es fa directament.
+    expect(div.querySelector('[role="dialog"]')).toBeNull();
+    expect(div.textContent).toContain(t('p3.capturada', { n: 1 }));
+    await act(async () => root.unmount());
+  });
+
+  it('només sense WebGL2 (però amb WebGL 1) sí que es carreguen els models', async () => {
+    const an = creaFalsAnalitzador(mesuresBones());
+    mockCarregaModels.mockResolvedValue({ landmarker: {}, segmenter: {}, delegat: 'CPU', ms: 800 });
+    mockCreaAnalitzador.mockReturnValue(an);
+    posaCamera();
+    const { div, root } = monta(3, { ...FUNCIONALITATS, webGL2: false });
+    await act(async () => {});
+    await act(async () => {});
+    expect(mockCarregaModels).toHaveBeenCalledWith({ webGL2: false });
+    expect(div.querySelector('[data-analisi-no-disponible]')).toBeNull();
+    await act(async () => root.unmount());
+  });
+
+  it('P0 avisa que no hi haurà anàlisi automàtica (i, amb WebGL 1, que anirà més lenta)', async () => {
+    const a = monta(0, SENSE_WEBGL);
+    await act(async () => {});
+    expect(a.div.textContent).toContain(t('p0.senseWebgl'));
+    expect(a.div.textContent).not.toContain(t('p0.senseWebgl2'));
+    await act(async () => a.root.unmount());
+    document.body.innerHTML = '';
+    const b = monta(0, { ...FUNCIONALITATS, webGL2: false });
+    await act(async () => {});
+    expect(b.div.textContent).toContain(t('p0.senseWebgl2'));
+    expect(b.div.textContent).not.toContain(t('p0.senseWebgl'));
+    await act(async () => b.root.unmount());
+  });
+});
+
+describe('P3 Fase 2: sense segmentació («no disponible»)', () => {
+  const senseSegmentacio = (m: IMostra): IMostra => ({ ...m, segmentacio: false });
+
+  it('fons, polo i espatlles surten en gris amb «No disponible»; no impedeixen el «Perfecte»', async () => {
+    const { div, root } = await montaP3({ ...mesuresBones(), fons: undefined, polo: undefined }, senseSegmentacio);
+    await avanca(1500);
+    const e = estats(div);
+    (['fons', 'polo', 'espatlles'] as const).forEach((c) => {
+      expect(e[ORDRE_PRIORITAT.indexOf(c)]).toBe(t('p3.estat.noDisp'));
+    });
+    expect(e[ORDRE_PRIORITAT.indexOf('llum')]).toBe(t('p3.estat.ok'));
+    expect(guia(div)).toBe(t('p3.msg.totOk'));
+    // Tots els controls disponibles són verds: la foto es fa sense confirmació.
+    await act(async () => botoText(div, t('p3.feta'))?.click());
+    await act(async () => {});
+    expect(div.querySelector('[role="dialog"]')).toBeNull();
+    await act(async () => root.unmount());
+  });
+
+  it('amb segmentació, els mateixos controls surten com sempre', async () => {
+    const { div, root } = await montaP3(mesuresBones());
+    await avanca(1500);
+    expect(estats(div)[ORDRE_PRIORITAT.indexOf('fons')]).toBe(t('p3.estat.ok'));
+    await act(async () => root.unmount());
+  });
+
+  it('el diagnòstic mostra el temps per pas i que la segmentació no està disponible', async () => {
+    window.location.hash = '#debug';
+    const { div, root } = await montaP3(mesuresBones(), senseSegmentacio);
+    await avanca(800);
+    const temps = div.querySelector('#debug-temps')?.textContent ?? '';
+    expect(temps).toContain('dibuix');
+    expect(temps).toContain('segmentador');
+    expect(temps).toContain('no disponible');
+    await act(async () => root.unmount());
+  });
+});
+
+describe('P3 Fase 2: pressupost de temps', () => {
+  it('si l’anàlisi és massa lenta de manera sostinguda, s’atura amb un avís i la captura manual continua', async () => {
+    const { div, root, an } = await montaP3(mesuresBones());
+    let ara = 0;
+    jest.spyOn(performance, 'now').mockImplementation(() => ara);
+    // Cada anàlisi «dura» 400 ms de rellotge.
+    an.analitza.mockImplementation(() => {
+      ara += 400;
+      return mostra(mesuresBones());
+    });
+    await avanca(5000);
+    expect(div.querySelector('[data-error-models]')?.textContent).toBe(t('p3.analisiMassaLenta'));
+    expect(div.querySelector('[data-semafors]')).toBeNull();
+    const crides = an.analitza.mock.calls.length;
+    await avanca(2000);
+    expect(an.analitza.mock.calls.length).toBe(crides);
+    expect(botoText(div, t('p3.feta'))?.disabled).toBe(false);
+    // Sense anàlisi activa, la foto es fa directament.
+    await act(async () => botoText(div, t('p3.feta'))?.click());
+    await act(async () => {});
+    expect(div.querySelector('[role="dialog"]')).toBeNull();
+    expect(div.textContent).toContain(t('p3.capturada', { n: 1 }));
+    await act(async () => root.unmount());
+  });
+
+  it('a la captura es demana una anàlisi de captura (sempre segmenta)', async () => {
+    const { div, root, an } = await montaP3(mesuresBones());
+    await avanca(1000);
+    await act(async () => botoText(div, t('p3.feta'))?.click());
+    await act(async () => {});
+    const darrera = an.analitza.mock.calls[an.analitza.mock.calls.length - 1];
+    expect(darrera[3]).toEqual({ captura: true });
+    // En directe es passa la cadència de segmentació del pressupost.
+    expect(an.analitza.mock.calls[0][3]).toEqual({ segmentaCada: 3 });
+    await act(async () => root.unmount());
+  });
+});
+
+describe('useModels: neteja sense acumular tasques', () => {
+  it('entrar i sortir de P3 diverses vegades no acumula tasques al registre de neteja', async () => {
+    const an = creaFalsAnalitzador(mesuresBones());
+    mockCarregaModels.mockResolvedValue({ landmarker: {}, segmenter: {}, delegat: 'GPU', ms: 1 });
+    mockCreaAnalitzador.mockReturnValue(an);
+    posaCamera();
+    registre.neteja();
+    // Es compta només el que afegeix la càrrega dels models simulada: l'analitzador n'hauria d'afegir UNA sola.
+    const visita = async (): Promise<void> => {
+      const m = monta(3);
+      await act(async () => {});
+      await act(async () => {});
+      await act(async () => m.root.unmount());
+      document.body.innerHTML = '';
+    };
+    await visita();
+    const unaVisita = registre.pendents;
+    for (let i = 0; i < 4; i++) {
+      await visita();
+    }
+    // Quatre visites més (sense neteja entremig) no han d'haver afegit cap tasca més.
+    expect(registre.pendents).toBe(unaVisita);
   });
 });

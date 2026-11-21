@@ -28,7 +28,7 @@ export const P3Captura: React.FC = () => {
   const { config, funcionalitats, dispatch, fotos, afegeixFoto } = useApp();
   const camera = useCamera();
   const debug = useDebug();
-  const models = useModels(config, funcionalitats.webGL2);
+  const models = useModels(config, funcionalitats.webGL2, funcionalitats.webGL);
   const [confirmant, setConfirmant] = React.useState<boolean>(false);
   const video = React.useRef<HTMLVideoElement>(null);
   const [revisio, setRevisio] = React.useState<boolean>(false);
@@ -60,7 +60,7 @@ export const P3Captura: React.FC = () => {
     config,
     delegat: models.delegat
   });
-  const analisiDisponible = models.estat === 'llest' && !analisi.error;
+  const analisiDisponible = models.estat === 'llest' && !analisi.error && !analisi.massaLent;
 
   const fesFoto = async (): Promise<void> => {
     const el = video.current;
@@ -192,9 +192,14 @@ export const P3Captura: React.FC = () => {
               {t('p3.carregantModels')}
             </p>
           )}
-          {(models.estat === 'error' || analisi.error) && (
+          {models.estat === 'noDisponible' && (
+            <p className={styles.nota} data-analisi-no-disponible="">
+              {t('p3.senseWebgl')}
+            </p>
+          )}
+          {(models.estat === 'error' || analisi.error || analisi.massaLent) && (
             <p className={styles.nota} data-error-models="">
-              {t(analisi.error ? 'p3.errorAnalisi' : 'p3.errorModels')}
+              {t(analisi.error ? 'p3.errorAnalisi' : analisi.massaLent ? 'p3.analisiMassaLenta' : 'p3.errorModels')}
             </p>
           )}
           {analisiDisponible && !enRevisio && (

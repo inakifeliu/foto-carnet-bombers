@@ -17,7 +17,8 @@ export const P0Benvinguda: React.FC = () => {
       <h1 className={styles.titol}>{t('p0.titol')}</h1>
       <p className={styles.text}>{t('p0.text')}</p>
       <p className={styles.text}>{t('p0.privacitat')}</p>
-      {!funcionalitats.webGL2 && <p className={styles.nota}>{t('p0.senseWebgl2')}</p>}
+      {!funcionalitats.webGL && <p className={styles.nota}>{t('p0.senseWebgl')}</p>}
+      {funcionalitats.webGL && !funcionalitats.webGL2 && <p className={styles.nota}>{t('p0.senseWebgl2')}</p>}
       <div className={styles.accions}>
         <Boto onClick={() => dispatch({ tipus: 'ENDAVANT' })}>{t('p0.comencar')}</Boto>
       </div>

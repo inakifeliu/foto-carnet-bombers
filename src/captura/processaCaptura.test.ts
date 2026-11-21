@@ -25,7 +25,14 @@ function fotograma(w = 1920, h = 1080): HTMLCanvasElement {
 }
 
 const analitzadorAmb = (mostra: Partial<IMostra> & { mesures: IMesures }): IAnalitzador => ({
-  analitza: jest.fn(() => ({ ample: 640, alt: 360, ...mostra })),
+  analitza: jest.fn(() => ({
+    ample: 640,
+    alt: 360,
+    temps: { dibuix: 0, landmarker: 0, segmentador: 0, metriques: 0 },
+    segmentat: true,
+    segmentacio: true,
+    ...mostra
+  })),
   allibera: jest.fn()
 });
 
@@ -160,7 +167,7 @@ describe('processaCaptura (RF-06, RF-07)', () => {
     const completa = fotograma(1920, 1080);
     const an = analitzadorAmb({ mesures: { nCares: 0 } });
     processaCaptura(completa, an, cfg);
-    expect(an.analitza).toHaveBeenCalledWith(completa, 1920, 1080);
+    expect(an.analitza).toHaveBeenCalledWith(completa, 1920, 1080, { captura: true });
   });
 
   it('la penalització configurable es respecta', () => {

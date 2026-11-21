@@ -13,6 +13,7 @@ describe('detectaFuncionalitats', () => {
       webAssembly: true,
       decompressionStream: true,
       webGL2: true,
+      webGL: true,
       compatible: true
     });
   });
@@ -96,5 +97,51 @@ describe('detectaFuncionalitats', () => {
     }
     expect(detectaFuncionalitats().getUserMedia).toBe(false);
     canvasSpy.mockRestore();
+  });
+});
+
+describe('detectaFuncionalitats: WebGL (RF-17)', () => {
+  const base = {
+    mediaDevices: { getUserMedia: (): void => undefined },
+    webAssembly: {},
+    decompressionStream: function DecompressionStream() {}
+  };
+
+  it('amb WebGL2 hi ha WebGL i no es consulta el WebGL 1', () => {
+    const teWebGL = jest.fn(() => false);
+    const r = detectaFuncionalitats({ ...base, teWebGL2: () => true, teWebGL });
+    expect(r.webGL).toBe(true);
+    expect(teWebGL).not.toHaveBeenCalled();
+  });
+
+  it('sense WebGL2 però amb WebGL 1: webGL2 fals, webGL cert (els models es carreguen, en CPU)', () => {
+    const r = detectaFuncionalitats({ ...base, teWebGL2: () => false, teWebGL: () => true });
+    expect(r.webGL2).toBe(false);
+    expect(r.webGL).toBe(true);
+    expect(r.compatible).toBe(true);
+  });
+
+  it('sense cap WebGL: webGL fals, però l’app continua sent compatible (captura manual)', () => {
+    const r = detectaFuncionalitats({ ...base, teWebGL2: () => false, teWebGL: () => false });
+    expect(r.webGL).toBe(false);
+    expect(r.compatible).toBe(true);
+  });
+
+  it('si la consulta llança, es considera que no hi ha WebGL', () => {
+    const r = detectaFuncionalitats({
+      ...base,
+      teWebGL2: () => {
+        throw new Error('x');
+      },
+      teWebGL: () => {
+        throw new Error('x');
+      }
+    });
+    expect(r.webGL2).toBe(false);
+    expect(r.webGL).toBe(false);
+  });
+
+  it('un entorn sense `teWebGL` i sense WebGL2 no té WebGL', () => {
+    expect(detectaFuncionalitats({ ...base, teWebGL2: () => false }).webGL).toBe(false);
   });
 });

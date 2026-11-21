@@ -30,12 +30,12 @@ export function processaCaptura(
   }
   let mostra;
   try {
-    mostra = analitzador.analitza(completa, completa.width, completa.height);
+    mostra = analitzador.analitza(completa, completa.width, completa.height, { captura: true });
   } catch {
     // L'anàlisi falla però la foto no s'ha de perdre.
     return { retallada: retallaCentrat(completa, { ppp }), avisos: ['avis.senseAnalisi'] };
   }
-  const avaluacio = avalua(mostra.mesures, config.llindars);
+  const avaluacio = avalua(mostra.mesures, config.llindars, { segmentacio: mostra.segmentacio });
   const avisos = missatgesAvis(avaluacio);
   const sensePuntuacio = calculaPuntuacio(avaluacio, config.pesosPuntuacio);
 
