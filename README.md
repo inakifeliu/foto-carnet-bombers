@@ -3,7 +3,7 @@
 Aplicació en **un únic fitxer HTML autònom** perquè els bombers del SPCPEIS es facin ells mateixos la foto de carnet amb el polo de l'uniforme: captura guiada amb webcam, retall automàtic a 35 × 45 mm, desat local com a `MATRICULA.jpg` i pujada via Microsoft Forms. El fitxer es distribueix per SharePoint, OneDrive o correu i s'obre amb doble clic a Edge, sense instal·lar res i sense connexió (només el Forms necessita xarxa).
 
 - Especificació completa (v0.3): [docs/ESPECIFICACIO.md](docs/ESPECIFICACIO.md)
-- Estat: **Fase 3 (captura automàtica, selecció i Forms) implementada**, pendent de la prova manual al Surface amb una cara real (les Fases 1-2 ja s'hi han provat). Flux complet P0 → P7: captura manual (amb confirmació si hi ha controls no verds), temporitzador de 5 s i **captura automàtica** (tot verd durant 1 s → compte enrere 3-2-1 → foto; es cancel·la si un control passa a vermell; només amb anàlisi disponible); fins a 3 fotos amb puntuació real a P4 (la triada és l'única que es manté, RF-09); desat a Imatges o Baixades (P5); P6 amb les instruccions i `window.open` al Forms pre-omplert; P7 amb el recordatori i l'esborrat opcional de la foto (RF-15). **Pendent**: el calibratge amb cares reals (Fase 5) i els acabats (Fase 4). La URL del Forms de `config/config.json` és el marcador `XXXX` fins que s'hi posi la real.
+- Estat: **Fase 3 (captura automàtica, selecció i Forms) implementada**, pendent de la prova manual al Surface amb una cara real (les Fases 1-2 ja s'hi han provat). Flux complet P0 → P7: captura manual (amb confirmació si hi ha controls no verds), temporitzador de 5 s i **captura automàtica** (tot verd durant 1 s → compte enrere 3-2-1 → foto; es cancel·la si un control passa a vermell; només amb anàlisi disponible); fins a 3 fotos amb puntuació real a P4 (la triada és l'única que es manté, RF-09); desat a Imatges o Baixades (P5); P6 amb les instruccions i `window.open` al Forms pre-omplert; P7 amb el recordatori i l'esborrat opcional de la foto (RF-15). **Pendent**: el calibratge amb cares reals (Fase 5) i els acabats (Fase 4). La URL del Forms de `config/config.json` ja és la real (pre-omplerta amb `{MATRICULA}`).
 - La branca `fase-0/viabilitat-esquelet` conté la versió anterior com a web part SPFx (v0.2). És només un arxiu: no es fusiona.
 
 ## Requisits
@@ -122,7 +122,7 @@ Vegeu l'especificació, §10: compilar → prova manual del fitxer → publicar-
 
 ## Decisions provisionals (spec §12)
 
-Mentre no es resolguin, es fan servir els valors provisionals: D1 matrícula `^[0-9]{4,6}$`; D2 sobreescriure si el fitxer ja existeix; D5 300 ppp; D6 càmera ≥ 720p; D8 text RGPD de P0 pendent del DPD (el text actual és provisional); D9 ulleres graduades permeses; D10 sense validació matrícula ↔ usuari; D13 distribució per enllaç; D15 sense avís de versió antiga. La URL del Forms de `config.json` és un marcador (`XXXX`) fins a la Fase 5.
+Mentre no es resolguin, es fan servir els valors provisionals: D1 matrícula `^[0-9]{4,6}$`; D2 sobreescriure si el fitxer ja existeix; D5 300 ppp; D6 càmera ≥ 720p; D8 text RGPD de P0 pendent del DPD (el text actual és provisional); D9 ulleres graduades permeses; D10 sense validació matrícula ↔ usuari; D13 distribució per enllaç; D15 sense avís de versió antiga.
 
 ## Recursos gràfics
 
