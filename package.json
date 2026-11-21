@@ -1,0 +1,43 @@
+{
+  "name": "foto-carnet-bombers",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Foto de carnet amb uniforme per als Bombers de Barcelona: un únic fitxer HTML autònom.",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "node scripts/construeix.mjs",
+    "verifica": "node scripts/verifica-html.mjs",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "@mediapipe/tasks-vision": "1.2.3",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@swc/core": "^1.16.22",
+    "@swc/jest": "^0.2.39",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@types/jest": "30.0.0",
+    "@types/node": "^22.20.5",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "esbuild": "0.25.12",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.14.0",
+    "jest": "^30.5.2",
+    "jest-environment-jsdom": "^30.5.2",
+    "prettier": "^3.10.1",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.73.0"
+  }
+}

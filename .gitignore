@@ -1,13 +1,7 @@
 node_modules/
-lib/
-lib-commonjs/
-lib-esm/
 dist/
-temp/
-release/
-sharepoint/solution/
-*.sppkg
-.heft/
+coverage/
+jest-output/
+*.log
 .DS_Store
 Thumbs.db
-jest-output/
