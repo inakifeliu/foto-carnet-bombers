@@ -31,7 +31,7 @@ Anota qualsevol cosa estranya a «Observacions». Marca cada pas.
 ### P0 — Benvinguda
 - [ ] Doble clic al fitxer: s'obre a Edge en pocs segons i no demana res més.
 - [ ] Es veu la capçalera (signatura de l'Ajuntament a l'esquerra i escut de Bombers a la dreta), l'escut en color i el segell històric, el títol «Foto de carnet amb uniforme» i el text de privacitat.
-- [ ] Al peu: signatura vermella, «Servei de Prevenció, Protecció Civil, Extinció d'Incendis i Salvaments» i **versió i data** (han de ser les del fitxer).
+- [ ] Al peu: signatura vermella, «Servei de Protecció Civil, Prevenció i Extinció d'Incendis i Salvaments» i **versió i data** (han de ser les del fitxer).
 - [ ] Els logos no estan deformats ni retallats ni tenen cap color estrany.
 - [ ] Botó **Començar**.
 
@@ -92,8 +92,9 @@ Anota qualsevol cosa estranya a «Observacions». Marca cada pas.
 Desa una foto i comprova-la a l'Explorador de fitxers de Windows (clic dret → *Propietats* → *Detalls*), o amb un visor d'imatges.
 
 - [ ] Nom exacte: `{matricula}.jpg` (p. ex. `12345.jpg`), a la carpeta **Imatges** (o a Baixades si el navegador no permet triar carpeta; llavors els textos de P6 i P7 han de dir «Baixades»).
-- [ ] Dimensions: **413 × 531 píxels** (300 ppp; amb 600 ppp serien 827 × 1063).
-- [ ] Resolució horitzontal i vertical: **300 ppp**.
+- [ ] Dimensions: la **resolució original de la càmera**, de proporció 35:45 (alçada = alçada del fotograma, ample ≈ 0,778 × alçada): p. ex. **840 × 1080 px** amb una càmera 1080p, 560 × 720 amb una 720p (mínim 413 × 531; màxim 2160 d'alçada). Amb `sortida.mida: "fixa"` serien 413 × 531.
+- [ ] Resolució horitzontal i vertical: la que fa que s'imprimeixi a 35 × 45 mm, `alçada / 1,772`: p. ex. **~610 ppp** amb 1080 px d'alçada (~406 ppp amb 720). Amb `"fixa"`, 300 ppp.
+- [ ] Mida del fitxer: uns 150–400 KB amb una càmera 1080p (no hi ha problema per pujar-lo al Forms).
 - [ ] La imatge **no està invertida** (el mirall només és a la pantalla): un rètol o el nom de la galeta es llegeix bé.
 - [ ] La foto és el que es veia al visor de P3 (cap, espatlles i part del polo; enquadrament «visor»).
 - [ ] Format 35:45 i fons blanc, sense franges.
