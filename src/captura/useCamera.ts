@@ -74,6 +74,15 @@ export function useCamera(): IEstatCamera {
       const ample = config.width ?? 0;
       const alt = config.height ?? 0;
       setResolucioBaixa(ample > 0 && alt > 0 && resolucioInsuficient(ample, alt) ? { ample, alt } : undefined);
+      // Si el sistema o una altra aplicació talla la càmera (desconnexió, Teams…), es mostra l'error i es pot tornar a provar.
+      pista?.addEventListener?.('ended', () => {
+        if (fluxActual.current === nou) {
+          aturaFlux(nou);
+          fluxActual.current = undefined;
+          setFlux(undefined);
+          setError('ocupada');
+        }
+      });
       setFlux(nou);
       setCarregant(false);
       try {
