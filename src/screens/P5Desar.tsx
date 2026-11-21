@@ -54,7 +54,7 @@ export const P5Desar: React.FC = () => {
         {error ? t('p5.errorDesat') : ''}
       </div>
       <div className={styles.accions}>
-        <Boto variant="secundari" onClick={() => dispatch({ tipus: 'ENRERE' })}>
+        <Boto variant="secundari" onClick={() => dispatch({ tipus: 'ENRERE' })} disabled={desant}>
           {t('nav.enrere')}
         </Boto>
         <Boto onClick={desa} disabled={!foto || desant}>
