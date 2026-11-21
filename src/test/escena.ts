@@ -90,7 +90,7 @@ export function mesuresBones(): IMesures {
   return {
     nCares: 1,
     desviacio: 0,
-    alcadaCara: 0.375,
+    alcadaCara: 0.26,
     yaw: 0,
     pitch: 0,
     roll: 0,

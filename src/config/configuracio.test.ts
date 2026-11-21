@@ -111,6 +111,17 @@ describe('resolConfig: validació de la configuració fusionada', () => {
     expect(r.avisos).toEqual([{ codi: 'pppInvalid', camp: 'sortida.ppp' }]);
   });
 
+  it('sortida.enquadrament: per defecte «visor»; accepta «cap»; un altre valor torna al per defecte amb avís', () => {
+    expect(CONFIG_PER_DEFECTE.sortida.enquadrament).toBe('visor');
+    expect(avis('{"sortida":{"enquadrament":"cap"}}').config.sortida.enquadrament).toBe('cap');
+    expect(avis('{"sortida":{"enquadrament":"cap"}}').avisos).toEqual([]);
+    ['"mig"', '5', 'null'].forEach((v) => {
+      const r = avis(`{"sortida":{"enquadrament":${v}}}`);
+      expect(r.config.sortida.enquadrament).toBe('visor');
+      expect(r.avisos).toEqual([{ codi: 'valorInvalid', camp: 'sortida.enquadrament' }]);
+    });
+  });
+
   it('un objecte substituït per null, array o primitiu es descarta', () => {
     ['null', '[1]', '7', '"x"'].forEach((valor) => {
       const r = avis(`{"llindars":${valor}}`);

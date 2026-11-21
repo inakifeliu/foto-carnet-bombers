@@ -263,14 +263,14 @@ describe('P3 Fase 2: bucle d’anàlisi i semàfors', () => {
   });
 
   it('reacciona: es corregeix a poc a poc cada control segons la prioritat i acaba en «Perfecte»', async () => {
-    const mals: IMesures = { ...mesuresBones(), alcadaCara: 0.15, yaw: 30, llum: 40 };
+    const mals: IMesures = { ...mesuresBones(), alcadaCara: 0.1, yaw: 30, llum: 40 };
     const { div, root, an } = await montaP3(mals);
     await avanca(1500);
     expect(guia(div)).toBe(t('p3.msg.apropa')); // 5.3 distància primer
-    an.posa({ ...mals, alcadaCara: 0.37 });
+    an.posa({ ...mals, alcadaCara: 0.26 });
     await avanca(1500);
     expect(guia(div)).toBe(t('p3.msg.giraDre')); // 5.4 orientació
-    an.posa({ ...mals, alcadaCara: 0.37, yaw: 0 });
+    an.posa({ ...mals, alcadaCara: 0.26, yaw: 0 });
     await avanca(1500);
     expect(guia(div)).toBe(t('p3.msg.massaFosc')); // 5.7 llum (apagar el llum)
     an.posa(mesuresBones());
@@ -407,7 +407,7 @@ describe('P3 Fase 2: captura manual amb confirmació', () => {
 
 describe('P3 Fase 2 → P4: puntuació real i avisos de cada foto', () => {
   it('P4 mostra la puntuació calculada sobre la captura i els avisos de la foto', async () => {
-    const { div, root } = await montaP3({ ...mesuresBones(), llum: 40, alcadaCara: 0.2 });
+    const { div, root } = await montaP3({ ...mesuresBones(), llum: 40, alcadaCara: 0.1 });
     await avanca(1500);
     await act(async () => botoText(div, t('p3.feta'))?.click());
     await act(async () => botoText(div, t('p3.confirmaSi'))?.click());

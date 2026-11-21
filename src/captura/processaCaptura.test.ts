@@ -2,7 +2,7 @@ import { CONFIG_PER_DEFECTE } from '../config/configuracio';
 import { creaLandmarks, creaMascara, mesuresBones } from '../test/escena';
 import type { IAnalitzador, IMostra } from '../vision/analitzador';
 import type { IMesures } from '../vision/tipus';
-import { retallaRectangle } from './retall';
+import { rectangleVisor, retallaRectangle } from './retall';
 import { processaCaptura } from './processaCaptura';
 
 interface ICtx {
@@ -69,7 +69,8 @@ describe('retallaRectangle', () => {
 });
 
 describe('processaCaptura (RF-06, RF-07)', () => {
-  const cfg = CONFIG_PER_DEFECTE;
+  // Aquest bloc prova el retall RF-07 (enquadrament «cap»); el «visor» (per defecte) té el seu bloc més avall.
+  const cfg = { ...CONFIG_PER_DEFECTE, sortida: { ...CONFIG_PER_DEFECTE.sortida, enquadrament: 'cap' as const } };
 
   it('sense analitzador (models no carregats): retall centrat de la Fase 1, sense puntuació i amb avís', () => {
     const ctx = espiaCanvas();
@@ -179,5 +180,58 @@ describe('processaCaptura (RF-06, RF-07)', () => {
       sortida: { ...cfg.sortida, penalitzacioForaFotograma: 0 }
     });
     expect(b.puntuacio ?? 0).toBeGreaterThan(a.puntuacio ?? 0);
+  });
+});
+
+describe('processaCaptura amb enquadrament «visor» (per defecte)', () => {
+  const cfg = CONFIG_PER_DEFECTE;
+
+  it('el per defecte és «visor»', () => {
+    expect(cfg.sortida.enquadrament).toBe('visor');
+  });
+
+  it.each([
+    [1920, 1080],
+    [1280, 720],
+    [640, 480],
+    [720, 1280]
+  ])('càmera %i×%i: retalla exactament el rectangle del visor, 413×531, sense avisos ni penalització', (w, h) => {
+    const ctx = espiaCanvas();
+    // Cap que, amb RF-07, sortiria fora del fotograma: amb «visor» no hi ha avís ni penalització.
+    const r = processaCaptura(
+      fotograma(w, h),
+      analitzadorAmb({ mesures: mesuresBones(), landmarks: creaLandmarks({ yFront: 0.1, yBarbeta: 0.8 }) }),
+      cfg
+    );
+    const v = rectangleVisor(w, h);
+    expect(ctx.drawImage.mock.calls[0].slice(1, 5)).toEqual([v.x, v.y, v.w, v.h]);
+    expect(ctx.fillRect).not.toHaveBeenCalled();
+    expect([r.retallada.width, r.retallada.height]).toEqual([413, 531]);
+    expect(r.avisos).toEqual([]);
+    expect(r.puntuacio).toBeGreaterThan(90); // sense penalització per retall fora del fotograma
+  });
+
+  it('600 ppp: 827×1063', () => {
+    espiaCanvas();
+    const r = processaCaptura(
+      fotograma(1920, 1080),
+      analitzadorAmb({ mesures: mesuresBones(), landmarks: creaLandmarks() }),
+      {
+        ...cfg,
+        sortida: { ...cfg.sortida, ppp: 600 }
+      }
+    );
+    expect([r.retallada.width, r.retallada.height]).toEqual([827, 1063]);
+  });
+
+  it('els controls no verds continuen donant avisos i puntuació', () => {
+    espiaCanvas();
+    const r = processaCaptura(
+      fotograma(),
+      analitzadorAmb({ mesures: { ...mesuresBones(), llum: 20 }, landmarks: creaLandmarks() }),
+      cfg
+    );
+    expect(r.avisos).toEqual(['p3.msg.massaFosc']);
+    expect(r.puntuacio).toBeLessThan(100);
   });
 });

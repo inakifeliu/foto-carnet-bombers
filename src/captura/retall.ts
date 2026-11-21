@@ -6,6 +6,12 @@ export const AMPLADA_MM = 35;
 export const ALCADA_MM = 45;
 const MM_PER_POLZADA = 25.4;
 
+/**
+ * Enquadrament de la foto final: «visor» = exactament el que es veu al visor de P3 (rectangle 35:45 centrat, el
+ * mateix que mostra `object-fit: cover`); «cap» = retall intel·ligent RF-07 (el cap ocupa 34 de 45 mm).
+ */
+export type Enquadrament = 'visor' | 'cap';
+
 export interface IRectangle {
   x: number;
   y: number;
@@ -58,6 +64,16 @@ export function rectangleRetallCentrat(ample: number, alt: number, factor = 1): 
     w,
     h
   };
+}
+
+/**
+ * Rectangle del fotograma que es veu al visor de P3 (`.visor`: `aspect-ratio: 35 / 45` + `object-fit: cover`
+ * sobre el `<video>`). És la ÚNICA font de veritat: la captura (enquadrament «visor»), les zones dels controls
+ * i el rectangle previst del diagnòstic fan servir aquesta funció. `object-fit: cover` mostra el rectangle 35:45
+ * més gran centrat, sigui quina sigui la proporció de la càmera; el visor no té cap factor de zoom.
+ */
+export function rectangleVisor(ample: number, alt: number): IRectangle {
+  return rectangleRetallCentrat(ample, alt);
 }
 
 /**

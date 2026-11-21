@@ -1,6 +1,6 @@
 /**
  * Procés de la captura (RF-06, RF-07): sobre el fotograma COMPLET (sense mirall) es tornen a calcular tots els
- * controls (no s'aprofiten els del vídeo), es calcula la puntuació i es retalla segons RF-07. Sense cara (o sense
+ * controls (no s'aprofiten els del vídeo), es calcula la puntuació i es retalla segons `config.sortida.enquadrament` (visor: el que es veu a P3; cap: RF-07). Sense cara (o sense
  * poder situar el cap) es fa servir el retall centrat simple de la Fase 1 amb un avís.
  */
 import type { IConfig } from '../config/configuracio';
@@ -8,7 +8,7 @@ import type { ClauI18n } from '../i18n';
 import { avalua, calculaPuntuacio, missatgesAvis } from '../vision/avaluacio';
 import type { IAnalitzador } from '../vision/analitzador';
 import { penalitzacioFora, TOLERANCIA_FORA, calculaRetallCap } from './retallCap';
-import { retallaCentrat, retallaRectangle } from './retall';
+import { rectangleVisor, retallaCentrat, retallaRectangle } from './retall';
 
 export interface IResultatCaptura {
   /** Canvas retallat a la mida de sortida (qui el rep l'ha d'alliberar). */
@@ -45,6 +45,14 @@ export function processaCaptura(
       retallada: retallaCentrat(completa, { ppp }),
       puntuacio: sensePuntuacio,
       avisos: [...avisos, 'avis.senseCara']
+    };
+  }
+  if (config.sortida.enquadrament === 'visor') {
+    // La foto és exactament el que es veia al visor (rectangleVisor): sempre dins el fotograma, sense avís ni penalització.
+    return {
+      retallada: retallaRectangle(completa, rectangleVisor(completa.width, completa.height), ppp),
+      puntuacio: sensePuntuacio,
+      avisos
     };
   }
   const retall = calculaRetallCap(mostra.landmarks, mostra.mascara, completa.width, completa.height, config.sortida);

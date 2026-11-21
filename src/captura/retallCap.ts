@@ -12,11 +12,16 @@
  */
 import type { IMascara, IPunt } from '../vision/tipus';
 import { LM, geometriaCara } from '../vision/cara';
-import { ALCADA_MM, AMPLADA_MM, type IRectangle } from './retall';
+import { ALCADA_MM, AMPLADA_MM, type Enquadrament, type IRectangle, rectangleVisor } from './retall';
 
 export interface IParamsRetallCap {
   alcadaCapMm: number;
   margeSuperiorMm: number;
+}
+
+/** Paràmetres de `config.sortida` que afecten l'enquadrament; sense `enquadrament` s'entén «cap» (RF-07). */
+export interface IParamsEnquadrament extends IParamsRetallCap {
+  enquadrament?: Enquadrament;
 }
 
 export interface IRetallCap {
@@ -25,7 +30,7 @@ export interface IRetallCap {
   /** Y (px) de la part superior del cap i de la barbeta, i com s'ha estimat el cap. */
   capY: number;
   barbetaY: number;
-  origenCap: 'mascara' | 'landmarks';
+  origenCap: 'mascara' | 'landmarks' | 'visor';
   /** Píxels de retall fora del fotograma per cada costat. */
   fora: { esq: number; dalt: number; dreta: number; baix: number };
   /** Fracció de l'àrea del retall que queda fora del fotograma (0..1). */
@@ -157,6 +162,23 @@ export function calculaRetallCap(
     return undefined;
   }
   return { ...r, capY, barbetaY, origenCap: cap.origen };
+}
+
+/**
+ * Enquadrament «visor»: el retall és el rectangle visible al visor de P3 (sempre dins el fotograma). Es retorna en
+ * el mateix format que RF-07 perquè el mode diagnòstic i la resta de codi no hagin de distingir-los; `capY` i
+ * `barbetaY` són informatius (front i barbeta dels landmarks).
+ */
+export function calculaRetallVisor(landmarks: IPunt[] | undefined, amplePx: number, altPx: number): IRetallCap {
+  const g = landmarks ? geometriaCara(landmarks) : undefined;
+  return {
+    rect: rectangleVisor(amplePx, altPx),
+    capY: g ? g.yFront * altPx : 0,
+    barbetaY: g ? g.yBarbeta * altPx : 0,
+    origenCap: 'visor',
+    fora: { esq: 0, dalt: 0, dreta: 0, baix: 0 },
+    fraccioFora: 0
+  };
 }
 
 /** Penalització (punts) per retall fora del fotograma: proporcional fins a un 10% de l'àrea fora; 0 sota la tolerància. */

@@ -3,8 +3,8 @@
  * la matriu facial, una imatge RGBA reduïda (~640 px d'amplada) i la màscara de segmentació, i en retornen
  * valors numèrics. L'avaluació (verd/àmbar/vermell i missatges) és a `avaluacio.ts`.
  */
-import { calculaRetallCap, type IParamsRetallCap, type IRetallCap } from '../captura/retallCap';
-import { rectangleRetallCentrat } from '../captura/retall';
+import { calculaRetallCap, calculaRetallVisor, type IParamsEnquadrament, type IRetallCap } from '../captura/retallCap';
+import { rectangleVisor } from '../captura/retall';
 import type { ILlindars } from '../config/configuracio';
 import { anglesDeMatriu } from './angles';
 import { geometriaCara, rectCara, retallaAlFotograma, type IGeometriaCara } from './cara';
@@ -16,6 +16,14 @@ import type { IImatgeRGBA, IMascara, IMatriu, IMesures, IPunt, IRectNorm } from 
  * barbeta (s'evita el coll) i acaba a 0,70; l'amplada és 1,6 × l'amplada de la cara, centrada a la cara.
  */
 export const ZONA_TORS = { inici: 0.2, final: 0.7, amplada: 1.6 } as const;
+
+/**
+ * Zona del tors amb enquadrament «visor» (cap + espatlles + part del polo, cara petita: ≈0,27 de l'alçada del
+ * visor). Amb la barbeta a ~50% de l'alçada i les espatlles ~0,5 alçades de cara per sota, la zona 0,20–0,70
+ * quedaria al coll; per això aquí és més avall i més ampla (espatlles): 0,6–1,3 alçades de cara sota la barbeta
+ * (≈ 66–85% de l'alçada del visor) i 2,2 × l'amplada de la cara. A calibrar amb fotos reals.
+ */
+export const ZONA_TORS_VISOR = { inici: 0.6, final: 1.3, amplada: 2.2 } as const;
 
 /** Salt de mostreig (píxels) als recorreguts de fons i polo: n'hi ha prou amb una de cada 2×2. */
 const SALT = 2;
@@ -49,7 +57,7 @@ export interface IResultatMesures {
   mesures: IMesures;
   /** Màscara normalitzada (1 = persona). */
   mascara?: IMascara;
-  /** Retall RF-07 previst, en píxels del fotograma analitzat. */
+  /** Retall previst (RF-07 «cap» o rectangle del visor), en píxels del fotograma analitzat. */
   retall?: IRetallCap;
   /** Zones analitzades (normalitzades i dins el fotograma), per al mode diagnòstic. */
   zonaFons?: IRectNorm;
@@ -253,16 +261,29 @@ export function proporcioPolo(
   return blaus / persona;
 }
 
+function interseccio(a: IRectNorm, b: IRectNorm): IRectNorm {
+  const x0 = Math.max(a.x, b.x);
+  const y0 = Math.max(a.y, b.y);
+  const x1 = Math.min(a.x + a.w, b.x + b.w);
+  const y1 = Math.min(a.y + a.h, b.y + b.h);
+  return { x: x0, y: y0, w: Math.max(0, x1 - x0), h: Math.max(0, y1 - y0) };
+}
+
 /** Zona NOMINAL del tors (pot sortir del fotograma) i la part visible. */
-export function zonesTors(g: IGeometriaCara): { nominal: IRectNorm; visible: IRectNorm; fraccioVisible: number } {
-  const ample = ZONA_TORS.amplada * g.ample;
+export function zonesTors(
+  g: IGeometriaCara,
+  /** Part del fotograma que acaba a la foto (per defecte, tot el fotograma; amb enquadrament «visor», el visor). */
+  limit?: IRectNorm,
+  zona: { inici: number; final: number; amplada: number } = ZONA_TORS
+): { nominal: IRectNorm; visible: IRectNorm; fraccioVisible: number } {
+  const ample = zona.amplada * g.ample;
   const nominal: IRectNorm = {
     x: g.centreX - ample / 2,
-    y: g.yBarbeta + ZONA_TORS.inici * g.alcada,
+    y: g.yBarbeta + zona.inici * g.alcada,
     w: ample,
-    h: (ZONA_TORS.final - ZONA_TORS.inici) * g.alcada
+    h: (zona.final - zona.inici) * g.alcada
   };
-  const visible = retallaAlFotograma(nominal);
+  const visible = interseccio(nominal, limit ?? { x: 0, y: 0, w: 1, h: 1 });
   const area = nominal.w * nominal.h;
   return { nominal, visible, fraccioVisible: area > 0 ? (visible.w * visible.h) / area : 0 };
 }
@@ -271,7 +292,7 @@ export function zonesTors(g: IGeometriaCara): { nominal: IRectNorm; visible: IRe
 export function calculaMesures(
   entrada: IEntradaMesures,
   llindars: ILlindars,
-  params: IParamsRetallCap
+  params: IParamsEnquadrament
 ): IResultatMesures {
   const nCares = entrada.cares.length;
   const { imatge } = entrada;
@@ -283,7 +304,21 @@ export function calculaMesures(
   if (!g) {
     return { mesures: { nCares } };
   }
-  const mesures: IMesures = { nCares, desviacio: g.centreX - 0.5, alcadaCara: g.alcada };
+  // Amb enquadrament «visor» la foto és el rectangle visible al visor: la distància és relativa a la seva alçada
+  // (en una càmera 16:9 coincideix amb l'alçada del fotograma) i les zones es limiten a aquest rectangle.
+  const visor = params.enquadrament === 'visor';
+  const rectVisor = rectangleVisor(imatge.w, imatge.h);
+  const visorNorm: IRectNorm = {
+    x: rectVisor.x / imatge.w,
+    y: rectVisor.y / imatge.h,
+    w: rectVisor.w / imatge.w,
+    h: rectVisor.h / imatge.h
+  };
+  const mesures: IMesures = {
+    nCares,
+    desviacio: g.centreX - 0.5,
+    alcadaCara: visor ? g.alcada / visorNorm.h : g.alcada
+  };
 
   const angles = anglesDeMatriu(entrada.matriu);
   if (angles) {
@@ -306,7 +341,7 @@ export function calculaMesures(
   mesures.ombra = diferenciaEsquerraDreta(imatge, zonaCara);
   mesures.nitidesa = varianciaLaplaciana(imatge, zonaCara);
 
-  const tors = zonesTors(g);
+  const tors = zonesTors(g, visor ? visorNorm : undefined, visor ? ZONA_TORS_VISOR : ZONA_TORS);
   mesures.torsVisible = tors.fraccioVisible;
 
   const resultat: IResultatMesures = { mesures, zonaTors: tors.visible, zonaCara };
@@ -317,7 +352,9 @@ export function calculaMesures(
       : undefined);
   resultat.mascara = mascara;
 
-  const retall = calculaRetallCap(landmarks, mascara, imatge.w, imatge.h, params);
+  const retall = visor
+    ? calculaRetallVisor(landmarks, imatge.w, imatge.h)
+    : calculaRetallCap(landmarks, mascara, imatge.w, imatge.h, params);
   resultat.retall = retall;
   const rectRetall = retall
     ? {
@@ -326,10 +363,7 @@ export function calculaMesures(
         w: retall.rect.w / imatge.w,
         h: retall.rect.h / imatge.h
       }
-    : (() => {
-        const c = rectangleRetallCentrat(imatge.w, imatge.h);
-        return { x: c.x / imatge.w, y: c.y / imatge.h, w: c.w / imatge.w, h: c.h / imatge.h };
-      })();
+    : visorNorm;
   resultat.zonaFons = retallaAlFotograma(rectRetall);
 
   if (mascara) {

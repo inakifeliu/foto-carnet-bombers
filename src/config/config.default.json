@@ -4,6 +4,7 @@
   "sortida": {
     "ppp": 300,
     "qualitatJpeg": 0.92,
+    "enquadrament": "visor",
     "alcadaCapMm": 34,
     "margeSuperiorMm": 4,
     "penalitzacioForaFotograma": 20
@@ -17,8 +18,8 @@
   },
   "llindars": {
     "centratMax": 0.08,
-    "alcadaCaraMin": 0.3,
-    "alcadaCaraMax": 0.45,
+    "alcadaCaraMin": 0.22,
+    "alcadaCaraMax": 0.3,
     "yawMax": 8,
     "pitchMax": 8,
     "rollMax": 5,

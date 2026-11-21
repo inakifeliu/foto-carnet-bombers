@@ -42,14 +42,14 @@ describe('avalua: cada control (verd / àmbar / vermell i límits)', () => {
     expect(missatge({ desviacio: 0.15 }, 'centrat')).toBe('p3.msg.movDre');
   });
 
-  it('5.3 distància (0,30–0,45)', () => {
+  it('5.3 distància (0,22–0,30 de l’alçada del visor)', () => {
+    expect(estat({ alcadaCara: 0.22 }, 'distancia')).toBe('ok');
     expect(estat({ alcadaCara: 0.3 }, 'distancia')).toBe('ok');
-    expect(estat({ alcadaCara: 0.45 }, 'distancia')).toBe('ok');
-    expect(estat({ alcadaCara: 0.29 }, 'distancia')).toBe('avis');
-    expect(estat({ alcadaCara: 0.2 }, 'distancia')).toBe('error');
-    expect(missatge({ alcadaCara: 0.2 }, 'distancia')).toBe('p3.msg.apropa');
-    expect(estat({ alcadaCara: 0.5 }, 'distancia')).toBe('avis');
-    expect(missatge({ alcadaCara: 0.7 }, 'distancia')).toBe('p3.msg.allunya');
+    expect(estat({ alcadaCara: 0.21 }, 'distancia')).toBe('avis');
+    expect(estat({ alcadaCara: 0.12 }, 'distancia')).toBe('error');
+    expect(missatge({ alcadaCara: 0.12 }, 'distancia')).toBe('p3.msg.apropa');
+    expect(estat({ alcadaCara: 0.35 }, 'distancia')).toBe('avis');
+    expect(missatge({ alcadaCara: 0.5 }, 'distancia')).toBe('p3.msg.allunya');
   });
 
   it('5.4 orientació: yaw/pitch ≤ 8°, roll ≤ 5° i missatges direccionals', () => {
@@ -139,7 +139,7 @@ describe('avalua: prioritat dels missatges (5.1 → 5.3 → 5.2 → 5.4 → 5.7 
   it('amb tot malament, a mesura que es corregeix cada control surt el següent de la llista', () => {
     const esperats: [Partial<IMesures>, string][] = [
       [{}, 'p3.msg.apropa'], // 5.3 distància
-      [{ alcadaCara: 0.375 }, 'p3.msg.movDre'], // 5.2 centrat
+      [{ alcadaCara: 0.26 }, 'p3.msg.movDre'], // 5.2 centrat
       [{ desviacio: 0 }, 'p3.msg.recte'], // 5.4 orientació (la inclinació és la que més s’allunya del llindar)
       [{ yaw: 0, pitch: 0, roll: 0 }, 'p3.msg.massaFosc'], // 5.7 llum
       [{ llum: 155 }, 'p3.msg.fonsNoBlanc'], // 5.6 fons

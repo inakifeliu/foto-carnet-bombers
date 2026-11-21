@@ -1,4 +1,11 @@
-import { midaSortida, pasosReduccio, rectangleRetallCentrat, retallaCentrat } from './retall';
+import {
+  midaSortida,
+  pasosReduccio,
+  rectangleRetallCentrat,
+  rectangleVisor,
+  retallaCentrat,
+  type IRectangle
+} from './retall';
 
 describe('midaSortida', () => {
   it('300 ppp → 413 × 531', () => {
@@ -140,5 +147,41 @@ describe('retallaCentrat (amb un context 2D simulat)', () => {
     // El primer pas llegeix del rectangle centrat de l'origen; els següents, del canvas intermedi sencer.
     expect(crides[0].args.slice(0, 4)).toEqual([833, 0, 2333, 3000]);
     expect(crides[1].args.slice(0, 2)).toEqual([0, 0]);
+  });
+});
+
+describe('rectangleVisor (el que mostra .visor: aspect-ratio 35/45 + object-fit: cover)', () => {
+  /** Rectangle visible segons la definició de `object-fit: cover` (coordenades reals, sense arrodoniments). */
+  function cover(ample: number, alt: number, visorW: number, visorH: number): IRectangle {
+    const escala = Math.max(visorW / ample, visorH / alt);
+    const w = visorW / escala;
+    const h = visorH / escala;
+    return { x: (ample - w) / 2, y: (alt - h) / 2, w, h };
+  }
+
+  it.each([
+    [1920, 1080],
+    [1280, 720],
+    [640, 480],
+    [1000, 1000],
+    [720, 1280],
+    [480, 640],
+    [350, 450],
+    [1600, 1200]
+  ])('càmera %i×%i: coincideix amb object-fit: cover (±1 px) i amb el retall centrat 35:45', (a, b) => {
+    const r = rectangleVisor(a, b);
+    expect(r).toEqual(rectangleRetallCentrat(a, b));
+    // Visors de mides diferents (el CSS només en fixa la proporció): el rectangle visible és el mateix.
+    [
+      [350, 450],
+      [420, 540],
+      [175, 225]
+    ].forEach(([vw, vh]) => {
+      const c = cover(a, b, vw, vh);
+      expect(Math.abs(r.x - c.x)).toBeLessThanOrEqual(1);
+      expect(Math.abs(r.y - c.y)).toBeLessThanOrEqual(1);
+      expect(Math.abs(r.w - c.w)).toBeLessThanOrEqual(1);
+      expect(Math.abs(r.h - c.h)).toBeLessThanOrEqual(1);
+    });
   });
 });

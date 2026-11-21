@@ -1,4 +1,5 @@
 import { LLINDARS, PARAMS_RETALL, creaImatge, creaLandmarks, creaMascara, creaMatriu } from '../test/escena';
+import { rectangleVisor } from '../captura/retall';
 import { geometriaCara } from './cara';
 import { lluminancia, rgbAHsv } from './color';
 import {
@@ -383,5 +384,54 @@ describe('calculaMesures: la màscara pot tenir qualsevol mida (coordenades norm
     expect(r.mesures.polo).toBeUndefined();
     expect(r.retall?.origenCap).toBe('landmarks');
     expect(r.retall?.capY).toBeCloseTo((0.3 - 0.25 * 0.32) * H, 4);
+  });
+});
+
+describe('calculaMesures amb enquadrament «visor»', () => {
+  const VISOR = { ...PARAMS_RETALL, enquadrament: 'visor' as const };
+  const blanc = (w: number, h: number): ReturnType<typeof creaImatge> => creaImatge(w, h, () => [240, 240, 240]);
+  const cara = creaLandmarks({ centreX: 0.5, yFront: 0.3, yBarbeta: 0.5, ample: 0.1 });
+
+  it.each([
+    [640, 360],
+    [640, 480],
+    [360, 640]
+  ])('càmera %i×%i: el retall previst i la zona de fons són el rectangle del visor', (w, h) => {
+    const r = calculaMesures(
+      { imatge: blanc(w, h), cares: [cara], mascara: creaMascara(64, 36, () => false) },
+      LLINDARS,
+      VISOR
+    );
+    const v = rectangleVisor(w, h);
+    expect(r.retall?.rect).toEqual(v);
+    expect(r.retall?.origenCap).toBe('visor');
+    expect(r.retall?.fraccioFora).toBe(0);
+    expect(r.zonaFons?.x).toBeCloseTo(v.x / w, 9);
+    expect(r.zonaFons?.y).toBeCloseTo(v.y / h, 9);
+    expect(r.zonaFons?.w).toBeCloseTo(v.w / w, 9);
+    expect(r.zonaFons?.h).toBeCloseTo(v.h / h, 9);
+  });
+
+  it('la distància és relativa a l’alçada del visor (en 16:9 coincideix amb la del fotograma)', () => {
+    const a = calculaMesures({ imatge: blanc(640, 360), cares: [cara] }, LLINDARS, VISOR);
+    expect(a.mesures.alcadaCara).toBeCloseTo(0.2, 6);
+    // Càmera vertical 360×640: el visor fa 360×463.
+    const b = calculaMesures({ imatge: blanc(360, 640), cares: [cara] }, LLINDARS, VISOR);
+    expect(b.mesures.alcadaCara).toBeCloseTo(0.2 / (rectangleVisor(360, 640).h / 640), 6);
+    // Sense «visor» (RF-07 «cap») continua sent relativa al fotograma.
+    const c = calculaMesures({ imatge: blanc(360, 640), cares: [cara] }, LLINDARS, PARAMS_RETALL);
+    expect(c.mesures.alcadaCara).toBeCloseTo(0.2, 6);
+  });
+
+  it('5.11: la zona del tors es limita al visor (no al fotograma)', () => {
+    // Cara estreta: la zona (2,2 × 0,1 = 0,22 del fotograma) cap al visor 16:9 (0,4375 de l'amplada).
+    const dins = calculaMesures({ imatge: blanc(640, 360), cares: [cara] }, LLINDARS, VISOR);
+    expect(dins.mesures.torsVisible).toBeCloseTo(1, 6);
+    // Cara molt ampla: la zona sobresurt del visor però no del fotograma.
+    const ampla = creaLandmarks({ centreX: 0.5, yFront: 0.3, yBarbeta: 0.5, ample: 0.3 });
+    const r = calculaMesures({ imatge: blanc(640, 360), cares: [ampla] }, LLINDARS, VISOR);
+    expect(r.mesures.torsVisible).toBeLessThan(0.7);
+    const sense = calculaMesures({ imatge: blanc(640, 360), cares: [ampla] }, LLINDARS, PARAMS_RETALL);
+    expect(sense.mesures.torsVisible).toBeGreaterThan(r.mesures.torsVisible ?? 1);
   });
 });

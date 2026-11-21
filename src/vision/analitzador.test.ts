@@ -300,8 +300,8 @@ describe('creaAnalitzador: segmentador opcional i errors de segmentació', () =>
     expect(mostra.mascara).toBeUndefined();
     expect(mostra.mesures.fons).toBeUndefined();
     expect(mostra.mesures.polo).toBeUndefined();
-    // El retall segueix sortint dels landmarks (landmark 10 + 0,25 × alçada).
-    expect(mostra.retall?.origenCap).toBe('landmarks');
+    // Per defecte (enquadrament «visor») el retall és el rectangle del visor, també sense segmentador.
+    expect(mostra.retall?.origenCap).toBe('visor');
   });
 
   it('un error de segmentació no propaga: l’anàlisi de la cara continua', () => {

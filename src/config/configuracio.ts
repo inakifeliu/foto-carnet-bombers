@@ -1,4 +1,5 @@
 import { compilaRegexMatricula } from '../app/formulari';
+import type { Enquadrament } from '../captura/retall';
 import defaultConfigJson from './config.default.json';
 
 /** Llindars de qualitat (RF-05). Tots els valors són configurables i s'han de calibrar amb fotos reals (RF-18). */
@@ -62,6 +63,8 @@ export interface IConfig {
   sortida: {
     ppp: number;
     qualitatJpeg: number;
+    /** «visor» (per defecte): la foto és exactament el que es veu al visor de P3; «cap»: retall RF-07 (cap = alcadaCapMm). */
+    enquadrament: Enquadrament;
     alcadaCapMm: number;
     margeSuperiorMm: number;
     /** Punts que es resten a la puntuació si el retall surt del fotograma (proporcional fins a un 10% de l'àrea fora). */
@@ -189,6 +192,10 @@ function aplicaRestriccions(config: IConfig, avisos: IAvis[]): IConfig {
   if (!Number.isInteger(config.maxFotos) || config.maxFotos < 1 || config.maxFotos > 10) {
     avisos.push({ codi: 'maxFotosInvalid', camp: 'maxFotos' });
     config.maxFotos = CONFIG_PER_DEFECTE.maxFotos;
+  }
+  if (config.sortida.enquadrament !== 'visor' && config.sortida.enquadrament !== 'cap') {
+    avisos.push({ codi: 'valorInvalid', camp: 'sortida.enquadrament' });
+    config.sortida.enquadrament = CONFIG_PER_DEFECTE.sortida.enquadrament;
   }
   (['yawSigne', 'pitchSigne'] as const).forEach((clau) => {
     if (config.llindars[clau] !== 1 && config.llindars[clau] !== -1) {

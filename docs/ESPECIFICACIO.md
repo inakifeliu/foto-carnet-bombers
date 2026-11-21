@@ -162,7 +162,7 @@ Tots els llindars són **configurables** a `config.json` i s'han de **calibrar**
 |---|---|---|---|---|
 | 5.1 | Una sola cara | Face Landmarker | exactament 1 | "Només hi ha de sortir una persona" |
 | 5.2 | Centrat horitzontal | centre de la cara vs centre del frame | desviació ≤ 8% de l'amplada | "Mou-te a l'esquerra / dreta" |
-| 5.3 | Distància | alçada cara (front–barbeta) / alçada frame | entre 0,30 i 0,45 | "Apropa't" / "Allunya't" |
+| 5.3 | Distància | alçada cara (front–barbeta) / alçada del rectangle del visor (amb enquadrament «cap», del fotograma) | entre 0,22 i 0,30 (enquadrament «visor»; amb «cap», 0,30–0,45) | "Apropa't" / "Allunya't" |
 | 5.4 | Orientació del cap | angles de la matriu facial | gir (yaw) ≤ 8°, cabotada (pitch) ≤ 8°, inclinació (roll) ≤ 5° | "Gira el cap…", "Aixeca / abaixa la barbeta", "Posa el cap recte" |
 | 5.5 | Ulls oberts i boca tancada | blendshapes `eyeBlinkLeft/Right`, `jawOpen` | parpelleig < 0,4; jawOpen < 0,15 | "Obre bé els ulls" / "Tanca la boca" |
 | 5.6 | Fons blanc | píxels de fons (màscara) en la zona que quedarà dins el retall | ≥ 85% de píxels amb luminància > 190/255 i saturació < 0,15 | "El fons no és prou blanc" |
@@ -182,13 +182,16 @@ Tots els llindars són **configurables** a `config.json` i s'han de **calibrar**
 ### RF-07 Retall al format oficial
 - Proporció **35:45** (amplada:alçada).
 - Mida de sortida per defecte: **413 × 531 px** (300 ppp). Configurable (`config.sortida.ppp`: 300 o 600 → 827 × 1063 px).
-- Enquadrament (referència normes DNI/OACI, configurable):
+- **Enquadrament** (`config.sortida.enquadrament`):
+  - **`"visor"` (per defecte)**: la foto final és **exactament el que es veu al visor de P3** (sense el mirall): el rectangle 35:45 més gran centrat al fotograma de la càmera (el mateix que mostra `object-fit: cover`, sigui quina sigui la proporció de la càmera), de manera que s'hi veuen cap, espatlles i part de l'uniforme. Decisió de l'usuari del 21/11/2026 després de provar-ho al Surface. El visor, la captura, els controls que depenen del retall (5.3, 5.6, 5.11) i el rectangle previst del mode diagnòstic fan servir la mateixa funció (`rectangleVisor`). El retall sempre és dins el fotograma: no hi ha avís «Massa a prop / a la vora» ni penalització. Silueta guia i llindars (5.3: 0,22–0,30; zona del tors de 5.10/5.11 més avall i més ampla) pensats per a aquest enquadrament; **a calibrar** amb fotos reals.
+  - **`"cap"`**: retall intel·ligent segons les normes DNI/OACI (opció configurable), descrit a continuació.
+- Enquadrament «cap» (referència normes DNI/OACI, configurable):
   - **Alçada del cap** (barbeta → part superior del cap): **34 mm** dels 45 (≈ 75% de l'alçada).
   - **Marge superior** (part superior del cap → límit superior): **4 mm**.
   - Cara **centrada horitzontalment**.
 - La **part superior del cap** s'estima amb la màscara de segmentació (primer píxel de persona per sobre del front a la columna central de la cara); si no és fiable, com a front (landmark 10) + 0,25 × l'alçada front–barbeta.
 - La **barbeta** és el landmark 152.
-- Si el retall necessita píxels fora del fotograma, la foto es marca amb avís "Massa a prop / a la vora" i rep una penalització a la puntuació.
+- (Només «cap».) Si el retall necessita píxels fora del fotograma, la foto es marca amb avís "Massa a prop / a la vora" i rep una penalització a la puntuació.
 - **No** es modifica el fons ni s'aplica cap retoc a la cara. Només retall i reescalat (interpolació d'alta qualitat).
 
 ### RF-08 Codificació JPEG
@@ -404,12 +407,12 @@ foto-carnet-bombers/
 {
   "matriculaRegex": "^[0-9]{4,6}$",
   "maxFotos": 3,
-  "sortida": { "ppp": 300, "qualitatJpeg": 0.92,
+  "sortida": { "ppp": 300, "qualitatJpeg": 0.92, "enquadrament": "visor",
                "alcadaCapMm": 34, "margeSuperiorMm": 4 },
   "forms": { "urlPlantilla": "https://forms.office.com/Pages/ResponsePage.aspx?id=XXXX&rYYYY={MATRICULA}" },
   "captura": { "segonsEstableAbansCompte": 1, "compteEnrere": 3 },
   "llindars": {
-    "centratMax": 0.08, "alcadaCaraMin": 0.30, "alcadaCaraMax": 0.45,
+    "centratMax": 0.08, "alcadaCaraMin": 0.22, "alcadaCaraMax": 0.30,
     "yawMax": 8, "pitchMax": 8, "rollMax": 5,
     "parpelleigMax": 0.4, "bocaObertaMax": 0.15,
     "fonsBlancMin": 0.85, "fonsLumMin": 190, "fonsSatMax": 0.15,
@@ -559,6 +562,7 @@ Esquelet:
 | D3 | *(revisada a v0.3)* L'aplicació és **un únic fitxer HTML autònom**, executat en local amb Edge. Res especial a SharePoint. Substitueix el web part SPFx de la v0.2 |
 | D4 | Destí final: **biblioteca de SharePoint** (via Forms + Power Automate) |
 | D7 | Identitat gràfica: escut de Bombers en color + segell històric (manual p. 5), signatura de l'Ajuntament (negre i vermell), sense logos 080 (§6) |
+| D17 | **Enquadrament de la foto final** (21/11/2026, després de provar-ho al Surface): per defecte és exactament el que es veu al visor de P3 (rectangle 35:45 centrat, amb cap, espatlles i part del polo), no el retall RF-07 amb el cap a 34/45 mm. El retall RF-07 es manté com a opció (`sortida.enquadrament: "cap"`). Llindar 5.3 i silueta guia adaptats; a calibrar |
 | D16 | Configuració fixada en compilar (`config/config.json`); canviar-la implica una versió nova |
 
 ### Pendents
@@ -588,7 +592,7 @@ Esquelet:
 - [ ] Un bomber sense ajuda pot completar el procés en < 5 min a partir de les instruccions, des de l'enllaç fins a l'enviament del Forms.
 - [ ] L'aplicació és **un sol fitxer HTML** que funciona amb doble clic a l'Edge dels equips corporatius, sense instal·lar res i sense permisos d'administrador.
 - [ ] El fitxer desat es diu exactament `{matricula}.jpg`, fa 35:45, té la resolució configurada i densitat JFIF correcta.
-- [ ] El cap ocupa ~75% de l'alçada (±5%) i està centrat.
+- [ ] La foto és el que es veu al visor de P3 (enquadrament «visor», per defecte); amb enquadrament «cap», el cap ocupa ~75% de l'alçada (±5%) i està centrat.
 - [ ] L'aplicació no fa **cap petició de xarxa** fins que l'usuari obre el Forms (comprovat a les eines de desenvolupador), i la guarda de build passa.
 - [ ] No queda cap dada a l'emmagatzematge del navegador després del procés.
 - [ ] La càmera s'apaga en acabar o en tancar la pestanya.

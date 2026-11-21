@@ -19,6 +19,7 @@
  *   fitxer.html     HTML a provar (per defecte, el més recent de dist/).
  *   --jpeg ruta     desa el JPEG que l'app genera (per inspeccionar-lo a mà).
  *   --video ruta    fitxer .y4m/.mjpeg com a càmera simulada (per exemple, amb una cara).
+ *   --rampa         només la passada «rampa» (vídeo estàtic amb rampa de lluminància: el JPEG ha de ser el visor).
  *   --visible       obre Edge amb finestra en lloc de headless.
  *   --nomes-normal  només la passada normal.
  *   --sense-webgl   només la passada sense WebGL.
@@ -86,11 +87,13 @@ const dorm = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const args = process.argv.slice(2);
 const senseWebgl = args.includes('--sense-webgl');
-if (!senseWebgl && !args.includes('--nomes-normal')) {
+const rampa = args.includes('--rampa');
+if (!senseWebgl && !rampa && !args.includes('--nomes-normal')) {
   // Sense cap flag de passada: es fan totes dues, cada una en un procés (i un Edge) a part.
   let codi = 0;
-  for (const flag of ['--nomes-normal', '--sense-webgl']) {
-    console.log(`\n===== Passada ${flag === '--sense-webgl' ? 'SENSE WebGL' : 'normal'} =====`);
+  for (const flag of ['--nomes-normal', '--sense-webgl', '--rampa']) {
+    const nom = { '--sense-webgl': 'SENSE WebGL', '--rampa': 'RAMPA (JPEG = visor)' }[flag] ?? 'normal';
+    console.log(`\n===== Passada ${nom} =====`);
     const r = spawnSync(process.execPath, [fileURLToPath(import.meta.url), flag, ...args], { stdio: 'inherit' });
     codi ||= r.status ?? 1;
   }
@@ -101,6 +104,25 @@ const iJpeg = args.indexOf('--jpeg');
 const rutaJpeg = iJpeg >= 0 ? path.resolve(args[iJpeg + 1] ?? 'prova.jpg') : undefined;
 const iVideo = args.indexOf('--video');
 const rutaVideo = iVideo >= 0 ? path.resolve(args[iVideo + 1] ?? '') : undefined;
+/**
+ * Passada `--rampa`: càmera simulada = un .y4m estàtic 640×360 amb una rampa horitzontal de lluminància (Y creix amb x):
+ * permet comprovar que el JPEG final és el rectangle que mostra el visor (enquadrament «visor»).
+ */
+function creaVideoRampa() {
+  const [w, h] = [640, 360];
+  const quadre = Buffer.alloc((w * h * 3) / 2, 128);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      quadre[y * w + x] = 16 + Math.round((x / (w - 1)) * 219);
+    }
+  }
+  const fitxer = path.join(os.tmpdir(), `fcb-rampa-${process.pid}.y4m`);
+  const capcalera = Buffer.from(`YUV4MPEG2 W${w} H${h} F30:1 Ip A1:1 C420jpeg\n`);
+  const quadres = Buffer.concat([Buffer.from('FRAME\n'), quadre]);
+  fs.writeFileSync(fitxer, Buffer.concat([capcalera, quadres]));
+  return fitxer;
+}
+const rutaVideoUsada = rutaVideo ?? (rampa ? creaVideoRampa() : undefined);
 const posicionals = args.filter((a, i) => !a.startsWith('--') && i !== iJpeg + 1 && i !== iVideo + 1);
 const html = triaHtml(posicionals[0]);
 const edgeExe = trobaEdge();
@@ -122,7 +144,7 @@ const edge = spawn(
     ...(senseWebgl ? ['--disable-software-rasterizer'] : []),
     '--use-fake-ui-for-media-stream',
     '--use-fake-device-for-media-stream=device-count=2',
-    ...(rutaVideo ? [`--use-file-for-fake-video-capture=${rutaVideo}`] : []),
+    ...(rutaVideoUsada ? [`--use-file-for-fake-video-capture=${rutaVideoUsada}`] : []),
     'about:blank'
   ],
   { stdio: 'ignore' }
@@ -538,28 +560,47 @@ try {
       `${info.w}x${info.h}`
     );
     ok('P3: mirall només per CSS (matrix(-1,...))', info.transform.startsWith('matrix(-1'), info.transform);
-    ok('P3: selector amb 2 càmeres', info.opcions === 2, String(info.opcions));
+    if (!rampa) {
+      ok('P3: selector amb 2 càmeres', info.opcions === 2, String(info.opcions));
+    }
     ok('P3: la regió d’estat no té aria-label', info.aria === false);
 
-    // Canvi de càmera: s'ha d'aturar la pista anterior.
-    const abans = await ev(`document.querySelector('#fc-camera').value`);
-    const nou = await ev(
-      `[...document.querySelectorAll('#fc-camera option')].map(o => o.value).find(v => v !== ${JSON.stringify(abans)})`
-    );
-    await ev(
-      `(() => { window.__pistaAnt = document.querySelector('video').srcObject.getVideoTracks()[0]; const s = document.querySelector('#fc-camera'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(s, ${JSON.stringify(nou)}); s.dispatchEvent(new Event('change', {bubbles:true})); })()`
-    );
-    await dorm(500);
-    await esperaVideo();
-    const canvi = await ev(
-      `({ antiga: window.__pistaAnt.readyState, nova: document.querySelector('video').srcObject?.getVideoTracks()[0]?.getSettings().deviceId })`
-    );
-    ok(
-      'P3: el canvi de càmera atura la pista anterior i n’obre una altra',
-      canvi.antiga === 'ended' && canvi.nova === nou,
-      JSON.stringify(canvi)
-    );
+    // Canvi de càmera: s'ha d'aturar la pista anterior (la passada «rampa» fa servir un fitxer: una sola càmera).
+    if (!rampa) {
+      const abans = await ev(`document.querySelector('#fc-camera').value`);
+      const nou = await ev(
+        `[...document.querySelectorAll('#fc-camera option')].map(o => o.value).find(v => v !== ${JSON.stringify(abans)})`
+      );
+      await ev(
+        `(() => { window.__pistaAnt = document.querySelector('video').srcObject.getVideoTracks()[0]; const s = document.querySelector('#fc-camera'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(s, ${JSON.stringify(nou)}); s.dispatchEvent(new Event('change', {bubbles:true})); })()`
+      );
+      await dorm(500);
+      await esperaVideo();
+      const canvi = await ev(
+        `({ antiga: window.__pistaAnt.readyState, nova: document.querySelector('video').srcObject?.getVideoTracks()[0]?.getSettings().deviceId })`
+      );
+      ok(
+        'P3: el canvi de càmera atura la pista anterior i n’obre una altra',
+        canvi.antiga === 'ended' && canvi.nova === nou,
+        JSON.stringify(canvi)
+      );
+    }
 
+    // Perfil de lluminància que ha de tenir la foto: el rectangle visible al visor (object-fit: cover, calculat aquí
+    // amb les mides reals del <video> i del visor), llegit del propi fotograma de la càmera (estàtic).
+    if (rampa) {
+      await ev(`(() => {
+        const v = document.querySelector('video');
+        const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight;
+        const x = c.getContext('2d'); x.drawImage(v, 0, 0);
+        const bw = v.clientWidth, bh = v.clientHeight;
+        const esc = Math.max(bw / v.videoWidth, bh / v.videoHeight);
+        const vw = bw / esc, vh = bh / esc, vx = (v.videoWidth - vw) / 2, vy = (v.videoHeight - vh) / 2;
+        const lum = (d) => 0.2126 * d[0] + 0.7152 * d[1] + 0.0722 * d[2];
+        window.__esperat = [0.05, 0.25, 0.5, 0.75, 0.95].map((f) => lum(x.getImageData(Math.round(vx + f * vw), Math.round(v.videoHeight / 2), 1, 1).data));
+        window.__visor = { bw, bh, vw, vh, vx, vy, vWidth: v.videoWidth, vHeight: v.videoHeight };
+      })()`);
+    }
     // Captura manual ×2
     ok('clic «Fer la foto ara»', (await clic('Fer la foto ara')) === 'ok');
     await dorm(500);
@@ -643,7 +684,13 @@ try {
     let pos = 2, app1 = false; const marcadors = [];
     while (buf[pos] === 0xff && buf[pos+1] !== 0xda) { marcadors.push(buf[pos+1].toString(16)); if (buf[pos+1] === 0xe1) app1 = true; pos += 2 + ((buf[pos+2]<<8)|buf[pos+3]); }
     let s = ''; for (const c of buf) s += String.fromCharCode(c);
-    return { mida: buf.length, app0: buf[2].toString(16)+buf[3].toString(16), ident: String.fromCharCode(...buf.slice(6,10)), unitats: buf[13], x: (buf[14]<<8)|buf[15], y: (buf[16]<<8)|buf[17], w: bmp.width, h: bmp.height, app1, marcadors, opcions: window.__opcions, b64: btoa(s) };
+    return { mida: buf.length, app0: buf[2].toString(16)+buf[3].toString(16), ident: String.fromCharCode(...buf.slice(6,10)), unitats: buf[13], x: (buf[14]<<8)|buf[15], y: (buf[16]<<8)|buf[17], w: bmp.width, h: bmp.height, app1, marcadors, opcions: window.__opcions, b64: btoa(s),
+      perfil: await (async () => {
+        const c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height;
+        const x = c.getContext('2d'); x.drawImage(bmp, 0, 0);
+        const lum = (d) => 0.2126 * d[0] + 0.7152 * d[1] + 0.0722 * d[2];
+        return [0.05, 0.25, 0.5, 0.75, 0.95].map((f) => lum(x.getImageData(Math.round(f * (bmp.width - 1)), Math.round(bmp.height / 2), 1, 1).data));
+      })(), esperat: window.__esperat ?? null, visor: window.__visor ?? null };
   })()`);
     if (des && rutaJpeg) {
       fs.writeFileSync(rutaJpeg, Buffer.from(des.b64, 'base64'));
@@ -661,6 +708,15 @@ try {
       des?.app0 === 'ffe0' && des.ident === 'JFIF' && des.unitats === 1 && des.x === 300 && des.y === 300,
       des && `${des.unitats}/${des.x}/${des.y}`
     );
+    if (rampa) {
+      const dif = des?.perfil?.map((l, i) => Math.abs(l - des.esperat[i]));
+      ok(
+        'JPEG: és el rectangle que mostra el visor (perfil de lluminància vs. fotograma de la càmera, ±10)',
+        dif && dif.every((d) => d <= 10),
+        des &&
+          `jpeg=${des.perfil.map((n) => n.toFixed(0))} esperat=${des.esperat.map((n) => n.toFixed(0))} visor=${JSON.stringify(des.visor)}`
+      );
+    }
     ok('JPEG: cap segment APP1/EXIF', des && !des.app1, des?.marcadors.join(','));
     ok('JPEG: mida < 300 KB', des && des.mida < 300 * 1024, des && String(des.mida));
     await esperaCondicio(`document.querySelector('h1')?.textContent === 'Puja la foto al formulari'`);
