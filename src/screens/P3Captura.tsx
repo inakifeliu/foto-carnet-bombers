@@ -17,6 +17,10 @@ import { useAnalisi } from '../vision/useAnalisi';
 import { useModels } from '../vision/useModels';
 import { ORDRE_PRIORITAT } from '../vision/tipus';
 
+/** Una avaluació més antiga que això (bucle aturat, pestanya amagada, vídeo encallat) no autoritza la captura automàtica. */
+const MAX_ANTIGUITAT_AVALUACIO_MS = 500;
+const REINTENT_FRESCOR_MS = 250;
+
 /**
  * Captura guiada (Fase 2): vídeo en mirall només a la visualització; els models de MediaPipe es carreguen en entrar
  * (RF-02, RF-03), el bucle d'anàlisi (RF-04) alimenta els semàfors (RF-05) i el missatge principal. La foto es fa a
@@ -25,8 +29,9 @@ import { ORDRE_PRIORITAT } from '../vision/tipus';
  * es demana confirmació. Captura automàtica (Fase 3): amb tots els controls verds de manera sostinguda
  * (`config.captura.segonsEstableAbansCompte`) s'inicia un compte enrere (`config.captura.compteEnrere`) i es fa la
  * foto; es cancel·la si algun control passa a vermell. No conviu amb el temporitzador manual (el manual preval) i,
- * un cop feta la foto, no es reinicia fins que l'usuari tria «Fer-ne una altra». Sense anàlisi no hi ha captura
- * automàtica.
+ * un cop feta la foto, no es reinicia fins que l'usuari tria «Fer-ne una altra». Només es fia d'una avaluació fresca
+ * (< 500 ms) i amb la pàgina visible. Un error de captura o «Cancel·lar» la bloquegen fins que els controls tornin a
+ * passar per no-verd. Sense anàlisi no hi ha captura automàtica.
  */
 export const P3Captura: React.FC = () => {
   const { config, funcionalitats, dispatch, fotos, afegeixFoto } = useApp();
@@ -47,6 +52,11 @@ export const P3Captura: React.FC = () => {
   const [compte, setCompte] = React.useState<number | undefined>(undefined);
   // Captura automàtica: segons que falten (undefined = no hi ha compte automàtic en marxa).
   const [compteAuto, setCompteAuto] = React.useState<number | undefined>(undefined);
+  // Captura automàtica bloquejada (error de captura o «Cancel·lar»): només es reactiva quan els controls deixen de
+  // ser tots verds i hi tornen a ser, o quan l'usuari fa «Fer-ne una altra».
+  const [bloquejatAuto, setBloquejatAuto] = React.useState<boolean>(false);
+  // Guarda síncrona contra dobles captures (l'estat `ocupat` només es veu al render següent).
+  const ocupatRef = React.useRef<boolean>(false);
 
   React.useEffect(() => {
     const el = video.current;
@@ -72,9 +82,10 @@ export const P3Captura: React.FC = () => {
 
   const fesFoto = async (): Promise<void> => {
     const el = video.current;
-    if (!el || el.videoWidth === 0 || ocupat) {
+    if (!el || el.videoWidth === 0 || ocupat || ocupatRef.current) {
       return;
     }
+    ocupatRef.current = true;
     setOcupat(true);
     setErrorCaptura(false);
     let completa: HTMLCanvasElement | undefined;
@@ -101,17 +112,22 @@ export const P3Captura: React.FC = () => {
         retallada.height = 0;
       }
       setErrorCaptura(true);
+      // Sense bucle de reintents: la captura automàtica no es reactiva fins que els controls tornin a passar per no-verd.
+      setBloquejatAuto(true);
     } finally {
       if (completa) {
         completa.width = 0;
         completa.height = 0;
       }
+      ocupatRef.current = false;
       setOcupat(false);
     }
   };
 
   /** Botó «Fer la foto ara»: amb controls no verds demana confirmació (spec P3). */
   const alClicFeta = (): void => {
+    // Preval sobre qualsevol compte (manual o automàtic): es cancel·la i es fa la foto amb la confirmació habitual.
+    setCompte(undefined);
     cancelaAuto();
     if (analisiDisponible && !analisi.avaluacio?.totOk) {
       setConfirmant(true);
@@ -148,35 +164,72 @@ export const P3Captura: React.FC = () => {
 
   // --- Captura automàtica -------------------------------------------------------------------------------------
   // Condicions per poder començar: anàlisi disponible, càmera llesta, cap altra captura/temporitzador/avís en marxa.
-  const autoPossible =
-    analisiDisponible && potCapturar && !ocupat && !errorCaptura && !confirmant && compte === undefined;
-  const totOk = autoPossible && analisi.avaluacio?.totOk === true;
+  const autoPossible = analisiDisponible && potCapturar && !ocupat && !confirmant && compte === undefined;
+  const avaluacioOk = analisiDisponible && analisi.avaluacio?.totOk === true;
+  const totOk = autoPossible && avaluacioOk && !bloquejatAuto;
+  const hiHaAvaluacio = analisi.avaluacio !== undefined;
   const hiHaVermell = analisi.avaluacio
     ? Object.values(analisi.avaluacio.controls).some((c) => c.estat === 'error')
     : false;
   const segonsEstable = config.captura.segonsEstableAbansCompte;
   const segonsCompte = config.captura.compteEnrere;
 
-  // 1) Tot verd de manera sostinguda -> comença el compte. Qualsevol canvia de `totOk` el reinicia.
+  const ultimaAvaluacioTs = analisi.ultimaAvaluacioTs;
+  /** L'avaluació és recent i la pàgina és visible (si no, l'estat de React pot ser obsolet). */
+  const avaluacioFresca = React.useCallback((): boolean => {
+    const ts = ultimaAvaluacioTs.current;
+    return ts !== undefined && !document.hidden && performance.now() - ts <= MAX_ANTIGUITAT_AVALUACIO_MS;
+  }, [ultimaAvaluacioTs]);
+
+  // El bloqueig s'aixeca quan els controls deixen de ser tots verds.
+  React.useEffect(() => {
+    if (!avaluacioOk) {
+      setBloquejatAuto(false);
+    }
+  }, [avaluacioOk]);
+
+  // Amb la pàgina amagada el bucle d'anàlisi s'atura: es cancel·la el compte automàtic.
+  React.useEffect(() => {
+    const alCanviVisibilitat = (): void => {
+      if (document.hidden) {
+        setCompteAuto(undefined);
+      }
+    };
+    document.addEventListener('visibilitychange', alCanviVisibilitat);
+    return () => document.removeEventListener('visibilitychange', alCanviVisibilitat);
+  }, []);
+
+  // 1) Tot verd de manera sostinguda -> comença el compte (només amb una avaluació fresca; si no, reintenta d'aquí a poc).
+  //    Qualsevol canvi de `totOk` el reinicia.
   React.useEffect(() => {
     if (!totOk || compteAuto !== undefined) {
       return undefined;
     }
-    const id = window.setTimeout(() => setCompteAuto(segonsCompte), segonsEstable * 1000);
+    let id: number | undefined;
+    const prova = (): void => {
+      if (avaluacioFresca()) {
+        setCompteAuto(segonsCompte);
+      } else {
+        id = window.setTimeout(prova, REINTENT_FRESCOR_MS);
+      }
+    };
+    id = window.setTimeout(prova, segonsEstable * 1000);
     return () => window.clearTimeout(id);
-  }, [totOk, compteAuto, segonsEstable, segonsCompte]);
+  }, [totOk, compteAuto, segonsEstable, segonsCompte, avaluacioFresca]);
 
   // 2) Compte enrere: un segon a cada pas; es cancel·la si es perd la possibilitat de capturar o hi ha un vermell.
   React.useEffect(() => {
     if (compteAuto === undefined) {
       return undefined;
     }
-    if (!autoPossible || hiHaVermell) {
+    if (!autoPossible || hiHaVermell || !hiHaAvaluacio) {
       setCompteAuto(undefined);
       return undefined;
     }
     const id = window.setTimeout(() => {
-      if (compteAuto <= 1) {
+      if (!avaluacioFresca()) {
+        setCompteAuto(undefined);
+      } else if (compteAuto <= 1) {
         setCompteAuto(undefined);
         void fesFotoRef.current();
       } else {
@@ -184,7 +237,7 @@ export const P3Captura: React.FC = () => {
       }
     }, 1000);
     return () => window.clearTimeout(id);
-  }, [compteAuto, autoPossible, hiHaVermell]);
+  }, [compteAuto, autoPossible, hiHaVermell, hiHaAvaluacio, avaluacioFresca]);
 
   /** Els botons manuals tenen prioritat: cancel·len qualsevol compte automàtic en marxa. */
   const cancelaAuto = (): void => setCompteAuto(undefined);
@@ -329,13 +382,20 @@ export const P3Captura: React.FC = () => {
       </div>
 
       <div className={styles.accions}>
-        <Boto variant="secundari" onClick={() => dispatch({ tipus: 'ENRERE' })}>
+        <Boto variant="secundari" onClick={() => dispatch({ tipus: 'ENRERE' })} disabled={ocupat}>
           {t('nav.enrere')}
         </Boto>
         {enRevisio ? (
           <>
             {!maxAssolit && (
-              <Boto variant="secundari" refBoto={botoAltra} onClick={() => setRevisio(false)}>
+              <Boto
+                variant="secundari"
+                refBoto={botoAltra}
+                onClick={() => {
+                  setBloquejatAuto(false);
+                  setRevisio(false);
+                }}
+              >
                 {t('p3.altra')}
               </Boto>
             )}
@@ -343,22 +403,34 @@ export const P3Captura: React.FC = () => {
               {t('p3.prouFotos')}
             </Boto>
           </>
-        ) : compte !== undefined ? (
-          <Boto variant="secundari" onClick={() => setCompte(undefined)}>
-            {t('p3.cancela')}
-          </Boto>
         ) : (
           <>
-            <Boto
-              variant="secundari"
-              onClick={() => {
-                cancelaAuto();
-                setCompte(5);
-              }}
-              disabled={!potCapturar || ocupat}
-            >
-              {t('p3.temporitzador')}
-            </Boto>
+            {compteVisible !== undefined && (
+              <Boto
+                variant="secundari"
+                onClick={() => {
+                  if (compteAuto !== undefined) {
+                    setBloquejatAuto(true);
+                  }
+                  setCompte(undefined);
+                  cancelaAuto();
+                }}
+              >
+                {t('p3.cancela')}
+              </Boto>
+            )}
+            {compte === undefined && (
+              <Boto
+                variant="secundari"
+                onClick={() => {
+                  cancelaAuto();
+                  setCompte(5);
+                }}
+                disabled={!potCapturar || ocupat}
+              >
+                {t('p3.temporitzador')}
+              </Boto>
+            )}
             <Boto refBoto={botoFeta} onClick={alClicFeta} disabled={!potCapturar || ocupat}>
               {t('p3.feta')}
             </Boto>

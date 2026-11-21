@@ -50,8 +50,17 @@ type VideoAmbCallback = HTMLVideoElement & {
  * sortir de P3, en passar a revisió o en canviar de càmera (efecte de neteja). L'estat de React només s'actualitza
  * quan canvien els semàfors o el missatge (o cada 0,25 s), de manera que el lector de pantalla no sent spam.
  */
-export function useAnalisi({ video, analitzador, actiu, fluxId, config, delegat }: IParamsAnalisi): IEstatBucle {
+export function useAnalisi({
+  video,
+  analitzador,
+  actiu,
+  fluxId,
+  config,
+  delegat
+}: IParamsAnalisi): IEstatBucle & { ultimaAvaluacioTs: React.MutableRefObject<number | undefined> } {
   const [estat, setEstat] = React.useState<IEstatBucle>({ error: false, massaLent: false });
+  // Instant (performance.now) de l'última avaluació feta; undefined si el bucle no corre. A diferència de l'estat, s'actualitza a cada anàlisi.
+  const ultimaAvaluacioTs = React.useRef<number | undefined>(undefined);
   const llindars = config.llindars;
 
   React.useEffect(() => {
@@ -74,6 +83,7 @@ export function useAnalisi({ video, analitzador, actiu, fluxId, config, delegat 
     const suavitzador = new Suavitzador(FINESTRA_SUAVITZAT_MS);
     const estabilitzador = new EstabilitzadorMissatge<ClauI18n>(3);
     const instants: number[] = [];
+    ultimaAvaluacioTs.current = undefined;
     setEstat({ error: false, massaLent: false });
 
     const programa = (): void => {
@@ -122,6 +132,7 @@ export function useAnalisi({ video, analitzador, actiu, fluxId, config, delegat 
         }
         const mesures = suavitzador.afegeix(t1, mostra.mesures);
         const avaluacio = avalua(mesures, llindars, { segmentacio: mostra.segmentacio });
+        ultimaAvaluacioTs.current = t1;
         const candidat: ClauI18n | undefined = avaluacio.totOk ? 'p3.msg.totOk' : avaluacio.missatge;
         const missatge = estabilitzador.push(candidat);
         estatAnalisi.publica({
@@ -179,11 +190,12 @@ export function useAnalisi({ video, analitzador, actiu, fluxId, config, delegat 
       if (idRaf !== undefined) {
         cancelAnimationFrame(idRaf);
       }
+      ultimaAvaluacioTs.current = undefined;
       suavitzador.reinicia();
       estabilitzador.reinicia();
       estatAnalisi.publica(undefined);
     };
   }, [actiu, analitzador, fluxId, llindars, delegat, video]);
 
-  return estat;
+  return { ...estat, ultimaAvaluacioTs };
 }
