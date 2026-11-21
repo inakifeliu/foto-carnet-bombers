@@ -1,9 +1,20 @@
 {
   "matriculaRegex": "^[0-9]{4,6}$",
   "maxFotos": 3,
-  "sortida": { "ppp": 300, "qualitatJpeg": 0.92, "alcadaCapMm": 34, "margeSuperiorMm": 4 },
-  "forms": { "urlPlantilla": "https://forms.office.com/Pages/ResponsePage.aspx?id=XXXX&rYYYY={MATRICULA}" },
-  "captura": { "segonsEstableAbansCompte": 1, "compteEnrere": 3 },
+  "sortida": {
+    "ppp": 300,
+    "qualitatJpeg": 0.92,
+    "alcadaCapMm": 34,
+    "margeSuperiorMm": 4,
+    "penalitzacioForaFotograma": 20
+  },
+  "forms": {
+    "urlPlantilla": "https://forms.office.com/Pages/ResponsePage.aspx?id=XXXX&rYYYY={MATRICULA}"
+  },
+  "captura": {
+    "segonsEstableAbansCompte": 1,
+    "compteEnrere": 3
+  },
   "llindars": {
     "centratMax": 0.08,
     "alcadaCaraMin": 0.3,
@@ -25,7 +36,11 @@
     "poloSatMin": 0.25,
     "poloValMin": 0.08,
     "poloValMax": 0.65,
-    "poloProporcioMin": 0.5
+    "poloProporcioMin": 0.5,
+    "margeAmbar": 0.25,
+    "torsVisibleMin": 0.85,
+    "yawSigne": 1,
+    "pitchSigne": 1
   },
   "pesosPuntuacio": {
     "orientacio": 2,
@@ -35,6 +50,8 @@
     "nitidesa": 2,
     "polo": 1,
     "centrat": 1,
-    "distancia": 1
+    "distancia": 1,
+    "espatlles": 1,
+    "ullsBoca": 1
   }
 }

@@ -1,14 +1,76 @@
 import { compilaRegexMatricula } from '../app/formulari';
 import defaultConfigJson from './config.default.json';
 
+/** Llindars de qualitat (RF-05). Tots els valors són configurables i s'han de calibrar amb fotos reals (RF-18). */
+export interface ILlindars {
+  /** 5.2 Desviació màxima del centre de la cara respecte del centre del fotograma (fracció de l'amplada). */
+  centratMax: number;
+  /** 5.3 Alçada de la cara (front–barbeta) / alçada del fotograma: interval vàlid. */
+  alcadaCaraMin: number;
+  alcadaCaraMax: number;
+  /** 5.4 Angles màxims (graus): gir (yaw), cabotada (pitch), inclinació (roll). */
+  yawMax: number;
+  pitchMax: number;
+  rollMax: number;
+  /** 5.5 Blendshapes: parpelleig màxim (eyeBlinkLeft/Right) i obertura de boca màxima (jawOpen). */
+  parpelleigMax: number;
+  bocaObertaMax: number;
+  /** 5.6 Fons: proporció mínima de píxels de fons «blancs» (luminància > fonsLumMin i saturació < fonsSatMax). */
+  fonsBlancMin: number;
+  fonsLumMin: number;
+  fonsSatMax: number;
+  /** 5.7 Luminància mitjana de la cara (0-255): interval vàlid. */
+  llumCaraMin: number;
+  llumCaraMax: number;
+  /** 5.8 Diferència relativa de luminància entre les dues meitats de la cara. */
+  ombraMax: number;
+  /** 5.9 Variància del Laplacià mínima (a calibrar). */
+  nitidesaMin: number;
+  /** 5.10 Polo blau: to (graus), saturació mínima, valor (min/max) i proporció mínima de píxels de persona. */
+  poloHueMin: number;
+  poloHueMax: number;
+  poloSatMin: number;
+  poloValMin: number;
+  poloValMax: number;
+  poloProporcioMin: number;
+  /** 5.11 Fracció mínima de la zona del tors que ha de ser dins del fotograma. */
+  torsVisibleMin: number;
+  /** Àmbar = fora del llindar però a menys d'aquesta fracció del llindar (p. ex. 0,25 = fins a un 25% més enllà). */
+  margeAmbar: number;
+  /** Signe (+1 / -1) aplicat als angles yaw i pitch de la matriu facial; es canvia si els missatges direccionals van al revés. */
+  yawSigne: number;
+  pitchSigne: number;
+}
+
+/** Pesos de la puntuació de qualitat (RF-05, final). */
+export interface IPesos {
+  orientacio: number;
+  fons: number;
+  llum: number;
+  ombra: number;
+  nitidesa: number;
+  polo: number;
+  centrat: number;
+  distancia: number;
+  espatlles: number;
+  ullsBoca: number;
+}
+
 export interface IConfig {
   matriculaRegex: string;
   maxFotos: number;
-  sortida: { ppp: number; qualitatJpeg: number; alcadaCapMm: number; margeSuperiorMm: number };
+  sortida: {
+    ppp: number;
+    qualitatJpeg: number;
+    alcadaCapMm: number;
+    margeSuperiorMm: number;
+    /** Punts que es resten a la puntuació si el retall surt del fotograma (proporcional fins a un 10% de l'àrea fora). */
+    penalitzacioForaFotograma: number;
+  };
   forms: { urlPlantilla: string };
   captura: { segonsEstableAbansCompte: number; compteEnrere: number };
-  llindars: Record<string, number>;
-  pesosPuntuacio: Record<string, number>;
+  llindars: ILlindars;
+  pesosPuntuacio: IPesos;
 }
 
 export type CodiAvis =
@@ -128,6 +190,12 @@ function aplicaRestriccions(config: IConfig, avisos: IAvis[]): IConfig {
     avisos.push({ codi: 'maxFotosInvalid', camp: 'maxFotos' });
     config.maxFotos = CONFIG_PER_DEFECTE.maxFotos;
   }
+  (['yawSigne', 'pitchSigne'] as const).forEach((clau) => {
+    if (config.llindars[clau] !== 1 && config.llindars[clau] !== -1) {
+      avisos.push({ codi: 'valorInvalid', camp: 'llindars.' + clau });
+      config.llindars[clau] = CONFIG_PER_DEFECTE.llindars[clau];
+    }
+  });
   if (config.matriculaRegex.trim() === '' || !validaRegex(config.matriculaRegex)) {
     avisos.push({ codi: 'regexInvalida', camp: 'matriculaRegex' });
     config.matriculaRegex = CONFIG_PER_DEFECTE.matriculaRegex;
