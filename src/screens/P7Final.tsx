@@ -15,6 +15,7 @@ export const P7Final: React.FC = () => {
   const [esborrant, setEsborrant] = React.useState<boolean>(false);
   const [esborrada, setEsborrada] = React.useState<boolean>(false);
   const [errorEsborrar, setErrorEsborrar] = React.useState<boolean>(false);
+  const botoNou = React.useRef<HTMLButtonElement>(null);
 
   const esborra = (): void => {
     if (esborrant) {
@@ -25,6 +26,8 @@ export const P7Final: React.FC = () => {
     // Es crida directament dins el clic (el permís es demana amb activació d'usuari).
     void esborraFitxerDesat(handle).then((r) => {
       setEsborrant(false);
+      // El botó d'esborrar pot desaparèixer: el focus va a l'acció que queda.
+      botoNou.current?.focus();
       if (r === 'ok') {
         setEsborrada(true);
         setEsborrable(false);
@@ -47,22 +50,26 @@ export const P7Final: React.FC = () => {
       </div>
       <h1 className={styles.titol}>{t('p7.titol')}</h1>
       <p className={styles.text}>{t('p7.text')}</p>
-      <p className={styles.text}>
-        {t('p7.recordatori', {
-          fitxer: estat.nomDesat || nomFitxer(estat.matricula),
-          carpeta: t(clauCarpeta(estat.desti))
-        })}
-      </p>
+      {!esborrada && (
+        <p className={styles.text}>
+          {t('p7.recordatori', {
+            fitxer: estat.nomDesat || nomFitxer(estat.matricula),
+            carpeta: t(clauCarpeta(estat.desti))
+          })}
+        </p>
+      )}
       <div role="status" className={styles.nota}>
         {esborrada ? t('p7.esborrada') : errorEsborrar ? t('p7.errorEsborrar') : ''}
       </div>
       <div className={styles.accions}>
         {esborrable && (
-          <Boto variant="secundari" onClick={esborra} disabled={esborrant}>
+          <Boto variant="secundari" onClick={esborra} ariaDisabled={esborrant}>
             {esborrant ? t('p7.esborrant') : t('p7.esborrar')}
           </Boto>
         )}
-        <Boto onClick={reinicia}>{t('p7.comencarDeNou')}</Boto>
+        <Boto refBoto={botoNou} onClick={reinicia}>
+          {t('p7.comencarDeNou')}
+        </Boto>
       </div>
     </section>
   );

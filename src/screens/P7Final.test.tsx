@@ -147,6 +147,56 @@ describe('P7: final i RF-15', () => {
     await act(async () => root.unmount());
   });
 
+  it('en esborrar no es desactiva el botó (aria-disabled), no es pot duplicar i el focus acaba a «Començar de nou»', async () => {
+    let acaba: () => void = () => undefined;
+    const handle = handleSimulat({ remove: jest.fn(() => new Promise<void>((r) => (acaba = r))) });
+    recordaHandleDesat(handle);
+    const { div, root } = await monta();
+    const esborrar = boto(div, t('p7.esborrar'));
+    esborrar?.focus();
+    await act(async () => esborrar?.click());
+    const enCurs = boto(div, t('p7.esborrant'));
+    expect(enCurs?.disabled).toBe(false);
+    expect(enCurs?.getAttribute('aria-disabled')).toBe('true');
+    await act(async () => enCurs?.click());
+    expect(handle.remove).toHaveBeenCalledTimes(1);
+    await act(async () => acaba());
+    expect(div.textContent).toContain(t('p7.esborrada'));
+    expect(document.activeElement).toBe(boto(div, t('p7.comencarDeNou')));
+    await act(async () => root.unmount());
+  });
+
+  it('després d’esborrar-la s’amaga el recordatori d’esborrar', async () => {
+    recordaHandleDesat(handleSimulat());
+    const { div, root } = await monta();
+    expect(div.textContent).toContain('Un cop enviada');
+    await act(async () => boto(div, t('p7.esborrar'))?.click());
+    await act(async () => {});
+    expect(div.textContent).toContain(t('p7.esborrada'));
+    expect(div.textContent).not.toContain('Un cop enviada');
+    await act(async () => root.unmount());
+  });
+
+  it('si l’esborrat falla, el focus també acaba a «Començar de nou»', async () => {
+    recordaHandleDesat(handleSimulat({ remove: jest.fn().mockRejectedValue(new Error('x')) }));
+    const { div, root } = await monta();
+    boto(div, t('p7.esborrar'))?.focus();
+    await act(async () => boto(div, t('p7.esborrar'))?.click());
+    await act(async () => {});
+    expect(div.textContent).toContain(t('p7.errorEsborrar'));
+    expect(document.activeElement).toBe(boto(div, t('p7.comencarDeNou')));
+    await act(async () => root.unmount());
+  });
+
+  it('requestPermission es crida a partir del mateix clic, sense cap altra interacció', async () => {
+    const handle = handleSimulat({ queryPermission: jest.fn().mockResolvedValue('prompt') });
+    recordaHandleDesat(handle);
+    const { div, root } = await monta();
+    await act(async () => boto(div, t('p7.esborrar'))?.click());
+    expect(handle.requestPermission).toHaveBeenCalledTimes(1);
+    await act(async () => root.unmount());
+  });
+
   it('«Començar de nou» torna a P0 i oblida el handle', async () => {
     recordaHandleDesat(handleSimulat());
     const { div, root } = await monta();
