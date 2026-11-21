@@ -3,7 +3,7 @@
 Aplicació en **un únic fitxer HTML autònom** perquè els bombers del SPCPEIS es facin ells mateixos la foto de carnet amb el polo de l'uniforme: captura guiada amb webcam, retall automàtic a 35 × 45 mm, desat local com a `MATRICULA.jpg` i pujada via Microsoft Forms. El fitxer es distribueix per SharePoint, OneDrive o correu i s'obre amb doble clic a Edge, sense instal·lar res i sense connexió (només el Forms necessita xarxa).
 
 - Especificació completa (v0.3): [docs/ESPECIFICACIO.md](docs/ESPECIFICACIO.md)
-- Estat: **Fase 0 (esquelet) feta**. Les pantalles P0–P7 naveguen amb dades simulades; la càmera, MediaPipe, el retall i el desat arriben a les Fases 1–3.
+- Estat: **Fase 1 (captura bàsica i sortida) implementada**, pendent de la prova manual al Surface. Funcionen la matrícula amb validació (P2), la càmera amb selector i errors en català (P3), la captura **manual**, el retall centrat 35:45 simple, el JPEG amb JFIF (413×531 px, 300 ppp, sense EXIF) i el desat a Imatges (P5, amb alternativa a Baixades). Encara és **simulat/pendent**: els semàfors i la captura automàtica (Fases 2–3), la puntuació de P4 (valor provisional), el retall amb landmarks (Fase 2), l'esborrat de la foto (RF-15) i el Forms real (Fases 3–5).
 - La branca `fase-0/viabilitat-esquelet` conté la versió anterior com a web part SPFx (v0.2). És només un arxiu: no es fusiona.
 
 ## Requisits
@@ -45,6 +45,7 @@ src/index.html                plantilla (CSP, missatge estàtic i <noscript>, RF
 src/main.tsx, arrenca.tsx     arrencada (detecció d'iframe, RF-19)
 src/app, screens, components  màquina d'estats, pantalles P0–P7 + NoCompatible, components
 src/recursos                  descodificació dels recursos incrustats (RF-20)
+src/captura                  càmera (RF-01), retall (RF-07), JFIF (RF-08), desat (RF-11), fotos en memòria
 src/vision                    (de moment, només la prova de càrrega del mode diagnòstic)
 src/i18n/ca.json              tots els textos (català)
 src/assets                    brand/ (logos), models/, wasm/ (còpia verificada per SHA-256)
@@ -96,11 +97,20 @@ El valor `Hash` ha de coincidir amb el contingut de `foto-carnet-bombers-vX.Y.Z.
 
 ## Mida
 
-Fitxer final (v0.1.0): **≈ 10,6 MB** (objectiu < 12 MB). Domina el WASM (14,0 MB → 4,0 MB amb gzip → 5,3 MB en base64) i el model de cara (3,6 MB → 3,2 MB → 4,2 MB). El build en mostra el detall.
+Fitxer final (v0.1.0): **≈ 10,7 MB** (objectiu < 12 MB). Domina el WASM (14,0 MB → 4,0 MB amb gzip → 5,3 MB en base64) i el model de cara (3,6 MB → 3,2 MB → 4,2 MB). El build en mostra el detall.
 
 ## Mode diagnòstic (base de RF-18)
 
 `Ctrl + Alt + D` o `#debug` al final de l'adreça mostra un panell amb versió, data de compilació i resum de la configuració, un botó que **comprova tots els recursos incrustats** (descodifica, descomprimeix i verifica SHA-256 i `WebAssembly.validate`) i un altre que prova la càrrega de MediaPipe amb els recursos incrustats. Mai mostra cap imatge. El diagnòstic complet és de la Fase 2.
+
+## Captura i sortida (Fase 1)
+
+- **Càmera** (`src/captura/camera.ts`, `useCamera.ts`): `getUserMedia` amb 1920×1080 ideal i `facingMode: 'user'`; si hi ha diverses càmeres, selector desplegable (es llisten després del permís; en canviar-ne s'aturen les pistes anteriors). Errors en català: permís denegat, cap càmera, càmera ocupada (Teams…) i genèric, amb «Tornar a provar». Avís no bloquejant si la resolució real és < 1280×720. El mirall és només CSS (`transform`) a la visualització.
+- **Captura manual**: es dibuixa el fotograma a resolució completa sobre un canvas **sense mirall** (RF-06), es retalla al rectangle 35:45 més gran possible centrat (`rectangleRetallCentrat`) i es reescala per passos amb `imageSmoothingQuality = 'high'` a la mida de `config.sortida.ppp` (300 → 413×531, 600 → 827×1063). El canvas de resolució completa s'allibera de seguida.
+- **JPEG** (`src/captura/jfif.ts`): `toBlob('image/jpeg', config.sortida.qualitatJpeg)` i `escriuJfif` escriu un únic APP0 JFIF (unitats = 1, X = Y = ppp) i elimina els segments APP1 (EXIF/XMP).
+- **Desat** (`src/captura/desar.ts`): `showSaveFilePicker` s'obre dins el clic, abans de codificar; el `FileSystemFileHandle` es guarda només en memòria (RF-15 futur). `AbortError` no mostra cap error; si no existeix o dóna `SecurityError`, es baixa amb `<a download>` i P6/P7 diuen «Baixades» en lloc d'«Imatges».
+- **Neteja (RF-16)**: en arribar a P7, a «Començar de nou» i a `pagehide` s'aturen les pistes, es revoquen les URL blob, es buiden els canvas i s'allibera l'estat de les fotos. Si la pàgina torna des de la memòria cau endavant/enrere (`pageshow` amb `persisted`), l'app es reinicialitza a P0. Cap ús de `localStorage`, `sessionStorage`, IndexedDB ni Cache API.
+- **CSP**: sense canvis; el vídeo s'assigna amb `srcObject` i les miniatures són URL `blob:` (ja permeses).
 
 ## Distribució
 

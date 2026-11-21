@@ -513,6 +513,8 @@ Esquelet:
 
 **Fet quan**: es pot fer una foto, desar-la com a `12345.jpg` a Imatges i, oberta a Windows, té 413×531 px i 300 ppp.
 
+**Estat (branca `html-autonom/fase-1`)**: implementat i provat amb tests i amb Edge headless (càmera simulada; el diàleg de desat se simula amb un mock pel mateix camí de codi). **Pendent**: la prova manual al Surface (càmera real, diàleg de Windows real i propietats del fitxer desat: 413×531 px i 300 ppp). A P3 només hi ha captura manual (sense semàfors ni captura automàtica, Fase 2/3) i la puntuació de P4 és provisional (simulada).
+
 ### Fase 2 — Visió i guiatge en temps real
 - Càrrega de MediaPipe des dels recursos incrustats (RF-02, RF-03, RF-20), bucle d'anàlisi (RF-04).
 - Tots els controls de RF-05, semàfors, missatge prioritari i silueta guia.
