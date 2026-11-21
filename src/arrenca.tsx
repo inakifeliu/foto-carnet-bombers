@@ -1,6 +1,7 @@
 import { createRoot, type Root } from 'react-dom/client';
 import { App } from './app/App';
 import { CONFIG } from './config/actual';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { ContextIncorrecte } from './screens/ContextIncorrecte';
 
 /** RF-19: true si la pàgina s'executa dins un iframe (o si no es pot determinar). */
@@ -25,9 +26,17 @@ export interface IArrencada {
 export function arrenca(arrel: HTMLElement, win: Pick<Window, 'top' | 'self'> = window): IArrencada {
   const root = createRoot(arrel);
   if (esDinsIframe(win)) {
-    root.render(<ContextIncorrecte />);
+    root.render(
+      <ErrorBoundary>
+        <ContextIncorrecte />
+      </ErrorBoundary>
+    );
     return { root, mode: 'iframe' };
   }
-  root.render(<App config={CONFIG} />);
+  root.render(
+    <ErrorBoundary>
+      <App config={CONFIG} />
+    </ErrorBoundary>
+  );
   return { root, mode: 'app' };
 }
