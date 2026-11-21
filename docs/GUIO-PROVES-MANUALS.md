@@ -131,7 +131,7 @@ Desa una foto i comprova-la a l'Explorador de fitxers de Windows (clic dret → 
 - [ ] En canviar de pantalla, el focus va al **títol** de la pantalla nova (es veu un contorn al títol).
 - [ ] El focus es veu clarament a cada botó, camp i enllaç.
 - [ ] Amb un lector de pantalla (Narrator: Windows + Ctrl + Enter): cada pantalla té un sol títol principal; els missatges de guia de P3 s'anuncien només quan canvien, no contínuament; els modals s'anuncien com a diàleg.
-- [ ] Amb l'opció de Windows «Mostra animacions» desactivada no hi ha moviments innecessaris.
+- [ ] Amb l'opció de Windows «Efectes d'animació» desactivada (Configuració → Accessibilitat → Efectes visuals) no hi ha moviments innecessaris.
 - [ ] Finestra a pantalla completa (≥ 1280 px): l'aspecte és sobri i amb molt d'espai.
 - [ ] Finestra estreta (arrossega el costat fins a ~360 px): **no hi ha scroll horitzontal** a cap pantalla i tot es continua llegint.
 - [ ] Zoom del navegador al 150 % i 200 %: tot es continua llegint i usant.

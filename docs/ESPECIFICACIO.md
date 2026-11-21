@@ -122,7 +122,7 @@ Llista il·lustrada (icona + text curt). Totes s'han de llegir; botó "Entesos, 
   3. "Ves a la carpeta **Imatges** i tria **12345.jpg**."
   4. "Clica **Envia**."
 - Botó **"Obrir el formulari"** → `window.open(urlForms, '_blank', 'noopener')` (cal que sigui en resposta al clic, per evitar el bloqueig de finestres emergents).
-- Enllaç alternatiu visible "Si no s'ha obert, clica aquí".
+- Enllaç alternatiu visible "Si no s'ha obert, obre el formulari des d'aquest enllaç".
 - Si l'equip no té connexió, avís: "Cal connexió a internet per enviar el formulari. La foto ja està desada a Imatges; pots enviar-la més tard."
 - Botó "Ja l'he enviat" → P7.
 

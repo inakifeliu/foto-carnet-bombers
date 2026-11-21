@@ -164,7 +164,7 @@ src/assets                    brand/ (logos), models/, wasm/
 - Cada pantalla té una sola `h1` (`components/Titol.tsx`, `tabIndex={-1}`) que rep el focus en canviar de pantalla; focus visible a tots els controls; modals amb `role="dialog"`, `aria-modal`, trampa de focus i Escape; `lang="ca"`; `prefers-reduced-motion`; adaptable fins a ~360 px.
 - `jest-axe` (només de desenvolupament, cap dependència en temps d'execució) comprova cada pantalla a `src/a11y/accessibilitat.test.tsx`.
 - Les il·lustracions de P1 són SVG propis en components React (`components/IconesInstruccions.tsx`), decoratives.
-- Els textos són a `src/i18n/ca.json`. Els apòstrofs són rectes (`'`) a tot arreu, com al text del peu fixat per l'usuari.
+- Els textos són a `src/i18n/ca.json`. Als textos de la interfície (`ca.json`) els apòstrofs són rectes (`'`) a tot arreu, com al text del peu fixat per l'usuari.
 
 ## Decisions provisionals (spec §12)
 

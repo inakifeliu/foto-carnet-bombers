@@ -1,6 +1,6 @@
 # Foto de carnet amb uniforme: instruccions
 
-Et faràs tu mateix/a la foto de carnet amb l'ordinador. Tarda uns **3 minuts** i no cal instal·lar res.
+Et faràs tu mateix/a la foto de carnet amb l'ordinador. Triga uns **3 minuts** i no cal instal·lar res.
 
 ## Què necessites
 
