@@ -1,6 +1,14 @@
 import { FaceLandmarker } from '@mediapipe/tasks-vision';
 import { obteRecurs, obteUrlBlob, revocaUrlsBlob } from '../recursos';
 
+/**
+ * MediaPipe carrega el loader del WASM afegint un `<script src="blob:…">` a `document.body` i no
+ * l'elimina. Un cop carregat (o si ha fallat) ja no cal: l'esborrem perquè no quedi al DOM.
+ */
+export function eliminaScriptsBlob(doc: Document = document): void {
+  doc.querySelectorAll('script[src^="blob:"]').forEach((s) => s.remove());
+}
+
 export interface IResultatProva {
   delegat: 'GPU' | 'CPU';
   ms: number;
@@ -24,10 +32,14 @@ export async function provaCarregaFaceLandmarker(): Promise<IResultatProva> {
   let delegat: 'GPU' | 'CPU' = 'GPU';
   let landmarker: FaceLandmarker;
   try {
-    landmarker = await crea('GPU');
-  } catch {
-    delegat = 'CPU';
-    landmarker = await crea('CPU');
+    try {
+      landmarker = await crea('GPU');
+    } catch {
+      delegat = 'CPU';
+      landmarker = await crea('CPU');
+    }
+  } finally {
+    eliminaScriptsBlob();
   }
   landmarker.close();
   // RF-16: les URL blob ja no calen un cop carregat el model.

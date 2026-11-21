@@ -39,7 +39,9 @@ export const PanellDebug: React.FC = () => {
     llindars: Object.keys(config.llindars).length
   });
   const [mediapipe, setMediapipe] = React.useState<string | undefined>(undefined);
+  const [executantMediapipe, setExecutantMediapipe] = React.useState(false);
   const provaMediapipe = (): void => {
+    setExecutantMediapipe(true);
     setMediapipe(t('debug.comprovant'));
     // Càrrega diferida: MediaPipe només es toca si es demana explícitament des d'aquí.
     import('../vision/mediapipe')
@@ -47,7 +49,8 @@ export const PanellDebug: React.FC = () => {
       .then((r) => setMediapipe(t('debug.mediapipeOk', { delegat: r.delegat, ms: r.ms })))
       .catch((e: unknown) =>
         setMediapipe(t('debug.mediapipeError', { motiu: e instanceof Error ? e.message : String(e) }))
-      );
+      )
+      .finally(() => setExecutantMediapipe(false));
   };
   const nOk = resultats?.filter((r) => r.ok).length ?? 0;
 
@@ -71,8 +74,8 @@ export const PanellDebug: React.FC = () => {
         </button>
       </p>
       <p className={styles.debugText}>
-        <button type="button" className={styles.botoSecundari} onClick={provaMediapipe}>
-          {t('debug.provaMediapipe')}
+        <button type="button" className={styles.botoSecundari} onClick={provaMediapipe} disabled={executantMediapipe}>
+          {executantMediapipe ? t('debug.comprovant') : t('debug.provaMediapipe')}
         </button>
       </p>
       {mediapipe && (
