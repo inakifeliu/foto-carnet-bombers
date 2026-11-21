@@ -241,8 +241,10 @@ En finalitzar (P7), en "Començar de nou" i en tancar la pestanya (`pagehide`):
 - Cap ús de `localStorage`, `sessionStorage`, IndexedDB ni Cache API per a imatges o matrícules.
 
 ### RF-17 Compatibilitat
-- Detecció de funcionalitats a l'inici: `getUserMedia`, WebAssembly, `DecompressionStream`, WebGL2 (si no hi és, MediaPipe en CPU).
+- Detecció de funcionalitats a l'inici: `getUserMedia`, WebAssembly, `DecompressionStream`, WebGL2 i WebGL (1).
 - Si falta alguna cosa imprescindible → pantalla "Aquest navegador no és compatible. Obre el fitxer amb Microsoft Edge."
+- **WebGL**: sense WebGL2 però amb WebGL 1, MediaPipe va en CPU (nota a P0: anirà més lenta). `@mediapipe/tasks-vision` 1.2.3 necessita WebGL **fins i tot amb el delegat CPU**: si no hi ha ni WebGL ni WebGL2, **NO es carreguen els models**; P0 avisa que l'anàlisi automàtica no estarà disponible i P3 ho diu directament («L'anàlisi automàtica no està disponible en aquest equip…», sense «Preparant l'anàlisi…» ni semàfors). La **captura manual continua** (retall centrat, sense puntuació: P4 diu «Sense puntuació»). No és un error d'incompatibilitat: l'app continua utilitzable.
+- **Segmentador opcional**: el Face Landmarker i l'Image Segmenter es creen per separat. Si el segmentador no es pot crear, falla en escalfar-se o dona errors seguits en execució (3), es desactiva i el Face Landmarker continua. Sense màscara, els controls de fons blanc, polo blau i espatlles/tors passen a l'estat «No disponible» (semàfor gris amb aquest text): no compten per al «Perfecte!» ni per a la puntuació (els pesos dels altres es reponderen) i el retall RF-07 fa servir landmark 10 + 0,25 × alçada de la cara.
 
 ### RF-18 Mode diagnòstic (per calibrar)
 - Activat amb la combinació **Ctrl + Alt + D** o afegint `#debug` al final de l'adreça.
@@ -289,6 +291,8 @@ En finalitzar (P7), en "Començar de nou" i en tancar la pestanya (`pagehide`):
 - Obertura i càrrega del model < 5 s en un equip corporatiu estàndard.
 - Vídeo fluid (≥ 24 fps de visualització). Anàlisi a ≥ 10 fps.
 - Si l'anàlisi va lenta, reduir la resolució d'entrada als models (p. ex. 640 px d'amplada).
+- **Pressupost de l'anàlisi en directe** (tot és síncron al fil principal; constants a `src/vision/pressupost.ts`): els models s'**escalfen** en carregar-se (una detecció i una segmentació amb un canvas buit, mentre es veu «Preparant l'anàlisi…»; no compten a la mitjana). El segmentador només corre cada 3 anàlisis (~4 Hz a 12 fps) amb entrada de 256 px d'amplada i es reaprofita l'última màscara (amb les seves mides; coordenades normalitzades); a la captura sempre se segmenta, a 640 px. Si la mitjana mòbil supera 50 ms, l'anàlisi baixa a 8 fps i la segmentació s'espaia (cada 6); torna a la normalitat per sota de 35 ms. Si supera 150 ms de manera sostinguda (10 anàlisis seguides), l'anàlisi en directe s'atura amb un avís en català i la captura manual continua.
+- El mode diagnòstic mostra (i el JSON porta) el temps mitjà per pas: dibuix, Face Landmarker, segmentador i mètriques, el nivell del pressupost i l'estat de la segmentació.
 - Mesura de referència (21/11/2026, Surface, Edge 157, `file://`): model carregat en 320 ms amb GPU, detecció 23 ms de mitjana (p95 37 ms), càmera 1920×1080 a 30 fps. **Pendent** de repetir en un equip de parc.
 
 ### Accessibilitat i usabilitat
