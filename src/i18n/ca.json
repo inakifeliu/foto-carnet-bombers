@@ -78,6 +78,7 @@
   "p5.desar": "Desar la foto",
   "p5.desant": "Desant…",
   "p5.errorDesat": "No s'ha pogut desar la foto. Torna-ho a provar.",
+  "p5.noDesat": "No s'ha desat la foto. Torna a fer clic a «Desar la foto».",
   "p5.ajuda": "S'obrirà una finestra perquè triïs on desar-la i quin nom tindrà (per defecte, a la carpeta Imatges).",
   "p5.baixades": "Aquest navegador no permet triar la carpeta: la foto es desarà a la carpeta Baixades.",
   "p6.titol": "Puja la foto al formulari",

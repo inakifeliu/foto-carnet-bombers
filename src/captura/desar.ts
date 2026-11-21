@@ -48,6 +48,12 @@ export type ResultatDesat =
   | { tipus: 'cancelat' }
   | { tipus: 'error'; error: unknown };
 
+/** Deixa constància a la consola (diagnòstic al Surface o a l'equip de parc) del motiu pel qual no s'ha desat. */
+function registraError(pas: string, error: unknown): void {
+  const missatge = error instanceof Error ? error.message : String(error);
+  console.warn(`[desar] ${pas}: ${nomError(error) || 'Error'}: ${missatge}`);
+}
+
 function nomError(error: unknown): string {
   return typeof error === 'object' && error !== null && 'name' in error
     ? String((error as { name: unknown }).name)
@@ -99,6 +105,7 @@ export async function desaFitxer(
         types: [{ description: 'Imatge JPEG', accept: { 'image/jpeg': ['.jpg'] } }]
       });
     } catch (error) {
+      registraError('selector', error);
       const n = nomError(error);
       if (n === 'AbortError') {
         return { tipus: 'cancelat' };
@@ -114,6 +121,7 @@ export async function desaFitxer(
   try {
     blob = await genera();
   } catch (error) {
+    registraError('codificació', error);
     return { tipus: 'error', error };
   }
 
@@ -125,6 +133,7 @@ export async function desaFitxer(
       await escriptor.close();
       return { tipus: 'ok', desti: 'imatges', handle, nom: typeof handle.name === 'string' ? handle.name : undefined };
     } catch (error) {
+      registraError('escriptura', error);
       try {
         await escriptor?.abort?.();
       } catch {
@@ -138,6 +147,7 @@ export async function desaFitxer(
     entorn.baixa(blob, nom);
     return { tipus: 'ok', desti: 'baixades' };
   } catch (error) {
+    registraError('baixada', error);
     return { tipus: 'error', error };
   }
 }

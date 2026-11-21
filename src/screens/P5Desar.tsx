@@ -13,6 +13,7 @@ export const P5Desar: React.FC = () => {
   const { estat, config, fotos, dispatch } = useApp();
   const [desant, setDesant] = React.useState<boolean>(false);
   const [error, setError] = React.useState<boolean>(false);
+  const [noDesat, setNoDesat] = React.useState<boolean>(false);
   const foto = fotos[estat.fotoTriada];
   const nom = nomFitxer(estat.matricula);
 
@@ -22,6 +23,7 @@ export const P5Desar: React.FC = () => {
     }
     setDesant(true);
     setError(false);
+    setNoDesat(false);
     // IMPORTANT: `desaFitxer` s'invoca aquí mateix, dins el clic i sense cap await abans: obre el selector de
     // fitxers primer i només després codifica (RF-11).
     desaFitxer(estat.matricula, () =>
@@ -34,10 +36,15 @@ export const P5Desar: React.FC = () => {
           dispatch({ tipus: 'ENDAVANT' });
         } else if (r.tipus === 'error') {
           setError(true);
+        } else {
+          // 'cancelat' (AbortError): es queda a P5 i s'avisa que no s'ha desat res.
+          setNoDesat(true);
         }
-        // 'cancelat' (AbortError): es queda a P5 sense cap error.
       })
-      .catch(() => setError(true))
+      .catch((e: unknown) => {
+        console.warn('[desar] inesperat:', e);
+        setError(true);
+      })
       .finally(() => setDesant(false));
   };
 
@@ -56,6 +63,9 @@ export const P5Desar: React.FC = () => {
       )}
       <div role="alert" className={styles.error}>
         {error ? t('p5.errorDesat') : ''}
+      </div>
+      <div role="status" className={styles.nota} hidden={!noDesat}>
+        {noDesat ? t('p5.noDesat') : ''}
       </div>
       <div className={styles.accions}>
         <Boto variant="secundari" onClick={() => dispatch({ tipus: 'ENRERE' })} disabled={desant}>
