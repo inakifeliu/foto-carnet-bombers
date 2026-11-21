@@ -601,6 +601,14 @@ try {
         window.__visor = { bw, bh, vw, vh, vx, vy, vWidth: v.videoWidth, vHeight: v.videoHeight };
       })()`);
     }
+    // Captura automàtica: amb la càmera simulada (sense cara) no s'ha de disparar mai.
+    await dorm(5000);
+    ok(
+      'P3: sense cara la captura automàtica no es dispara (cap compte enrere ni cap foto)',
+      (await ev(
+        `document.querySelectorAll('[data-compte-enrere]').length + document.querySelectorAll('main ul img').length`
+      )) === 0
+    );
     // Captura manual ×2
     ok('clic «Fer la foto ara»', (await clic('Fer la foto ara')) === 'ok');
     await dorm(500);
@@ -672,7 +680,7 @@ try {
     window.showSaveFilePicker = async (opts) => {
       window.__opcions = JSON.stringify(opts);
       const trossos = [];
-      return { name: '12345.jpg', createWritable: async () => ({ write: async (b) => { trossos.push(b); }, close: async () => { window.__desat = new Blob(trossos, {type:'image/jpeg'}); } }) };
+      return { name: '12345.jpg', queryPermission: async () => 'granted', remove: async () => { window.__esborrat = true; }, createWritable: async () => ({ write: async (b) => { trossos.push(b); }, close: async () => { window.__desat = new Blob(trossos, {type:'image/jpeg'}); } }) };
     };
   })()`);
     ok('clic «Desar la foto»', (await clic('Desar la foto')) === 'ok');
@@ -726,11 +734,49 @@ try {
       'P6: parla de la carpeta on s’ha desat (per defecte, Imatges) i del nom 12345.jpg',
       p6.includes("on l'has desada (per defecte, Imatges)") && p6.includes('12345.jpg')
     );
+    // RF-12/RF-13: window.open interceptat (cap navegació; no s'obre el Forms real) i enllaç alternatiu.
+    await ev(`window.__obert = []; window.open = (...a) => { window.__obert.push(a); return null; }`);
+    const pasos = await ev(`document.querySelectorAll('[role="dialog"] ol li').length`);
+    ok('P6: el modal mostra les 4 instruccions numerades', pasos === 4, String(pasos));
+    ok('P6: «Obrir el formulari» fa clic', (await clic('Obrir el formulari')) === 'ok');
+    await dorm(200);
+    const obert = await ev(`window.__obert`);
+    ok(
+      'P6: window.open rep l’URL del Forms amb la matrícula codificada, _blank i noopener',
+      obert.length === 1 &&
+        /^https:\/\/forms\.office\.com\/.*=12345$/.test(obert[0][0]) &&
+        obert[0][1] === '_blank' &&
+        obert[0][2] === 'noopener',
+      JSON.stringify(obert)
+    );
+    console.log('   URL rebuda per window.open: ' + (obert[0]?.[0] ?? '?').slice(0, 60) + '…');
+    const enllac = await ev(
+      `(() => { const a = [...document.querySelectorAll('a')].find(x => x.textContent.startsWith('Si no s') && x.textContent.endsWith('clica aquí')); return a ? { href: a.href, target: a.target, rel: a.rel } : null; })()`
+    );
+    ok(
+      'P6: enllaç alternatiu visible (_blank, noopener noreferrer) amb la mateixa URL',
+      enllac && enllac.target === '_blank' && enllac.rel === 'noopener noreferrer' && enllac.href === obert[0]?.[0],
+      JSON.stringify(enllac)
+    );
     await ev(`document.querySelector('[role="dialog"] button, [aria-modal="true"] button')?.click()`);
     await dorm(200);
     await clic("Ja l'he enviat");
     await dorm(500);
     ok('P7', (await h1()) === 'Moltes gràcies!', await h1());
+    ok(
+      "P7 (RF-15): amb handle i remove() surt «Esborrar la foto de l'equip» i el recordatori",
+      (await text()).includes('Un cop enviada') &&
+        (await ev(
+          `[...document.querySelectorAll('button')].some(b => b.textContent.startsWith('Esborrar la foto de l'))`
+        ))
+    );
+    await clic("Esborrar la foto de l'equip");
+    await esperaCondicio(`window.__esborrat === true`);
+    await dorm(300);
+    ok(
+      'P7 (RF-15): el handle simulat ha rebut remove() i diu «Foto esborrada»',
+      (await text()).includes('Foto esborrada')
+    );
     ok(
       'P7: ni vídeo ni cap <img> blob al DOM',
       (await ev(

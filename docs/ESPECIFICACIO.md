@@ -540,6 +540,8 @@ Esquelet:
 
 **Fet quan**: el flux complet funciona de punta a punta amb un Forms de proves.
 
+> Estat (21/11/2026): implementada (captura automàtica, 3 fotos, P4, P5/P6/P7 i RF-15, amb RF-09 aplicat en triar a P4); pendent de la prova manual al Surface amb cara real i amb el Forms real.
+
 ### Fase 4 — Acabats
 - Repàs de la identitat gràfica (§6) a totes les pantalles.
 - Accessibilitat, textos revisats, il·lustracions de les instruccions.
