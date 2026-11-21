@@ -85,6 +85,10 @@ Cap directiva admet `http(s):`, `ws(s):` ni `*`: qualsevol `fetch`/XHR/WebSocket
 
 Per comprovar que la guarda funciona: `FCB_PROVA_SENSE_PEGAT=1 npm run build` desactiva el pegat i el build ha de fallar.
 
+## Prova manual a Edge (Fase 1)
+
+`npm run build && npm run prova-edge` obre el HTML de `dist/` a Microsoft Edge (headless, càmera simulada amb `--use-fake-device-for-media-stream`, perfil temporal i port de depuració lliure) i recorre P0 → P7 comprovant, entre altres coses, el JPEG desat (413×531, JFIF 300 ppp, sense EXIF), l'alternativa a Baixades, el nom canviat al diàleg, la CSP i que **no hi ha cap petició externa**. Opcions: `npm run prova-edge -- fitxer.html --jpeg sortida.jpg --visible`. Si Edge no és a una ubicació habitual, defineix `EDGE_PATH`. No forma part de `npm test`.
+
 ## Comprovar el hash (Windows)
 
 Al costat de cada HTML hi ha el seu `.sha256`. A PowerShell, des de la carpeta del fitxer:

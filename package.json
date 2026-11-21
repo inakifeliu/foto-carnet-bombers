@@ -9,6 +9,7 @@
   "scripts": {
     "build": "node scripts/construeix.mjs",
     "verifica": "node scripts/verifica-html.mjs",
+    "prova-edge": "node scripts/prova-edge.mjs",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
