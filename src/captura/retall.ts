@@ -12,6 +12,19 @@ const MM_PER_POLZADA = 25.4;
  */
 export type Enquadrament = 'visor' | 'cap';
 
+/**
+ * Mida de la foto desada: «original» = el retall a la seva mida en píxels, sense reescalar (amb mínim
+ * `midaSortida(ppp)` i màxim `alcadaMaxPx` d'alçada); «fixa» = sempre `midaSortida(ppp)`.
+ */
+export type MidaSortida = 'original' | 'fixa';
+
+/** Part de `config.sortida` que decideix la mida final de la foto. */
+export interface IOpcionsSortida {
+  mida: MidaSortida;
+  ppp: number;
+  alcadaMaxPx: number;
+}
+
 export interface IRectangle {
   x: number;
   y: number;
@@ -32,6 +45,31 @@ export function midaSortida(ppp: number): IMida {
     w: Math.round((AMPLADA_MM / MM_PER_POLZADA) * ppp),
     h: Math.round((ALCADA_MM / MM_PER_POLZADA) * ppp)
   };
+}
+
+/**
+ * Mida final de la foto per a un retall de `rect.w × rect.h` píxels (proporció 35:45 amb enters).
+ * «fixa»: `midaSortida(ppp)`. «original»: l'alçada del retall, limitada a `alcadaMaxPx` (es redueix mantenint
+ * 35:45) i ampliada fins al mínim `midaSortida(ppp)` si el retall és més petit; l'ample se'n dedueix.
+ */
+export function midaFinal(rect: IMida, sortida: IOpcionsSortida): IMida {
+  const minim = midaSortida(sortida.ppp);
+  if (sortida.mida === 'fixa') {
+    return minim;
+  }
+  const h = Math.max(minim.h, Math.min(rect.h, Math.floor(sortida.alcadaMaxPx)));
+  const w = Math.max(minim.w, Math.round((h * AMPLADA_MM) / ALCADA_MM));
+  return { w, h };
+}
+
+/** Densitat (ppp) perquè una foto de `altPx` píxels d'alçada s'imprimeixi a 45 mm d'alçada (35 × 45 mm). */
+export function pppPerAlcada(altPx: number): number {
+  return Math.max(1, Math.round(altPx / (ALCADA_MM / MM_PER_POLZADA)));
+}
+
+/** Densitat que s'escriu al JFIF: «fixa» = la configurada; «original» = la que dona 35 × 45 mm amb l'alçada real. */
+export function pppSortida(sortida: IOpcionsSortida, altPx: number): number {
+  return sortida.mida === 'fixa' ? sortida.ppp : pppPerAlcada(altPx);
 }
 
 /**
@@ -94,7 +132,7 @@ export function pasosReduccio(origen: IMida, desti: IMida): IMida[] {
 }
 
 export interface IOpcionsRetall {
-  ppp: number;
+  sortida: IOpcionsSortida;
   /** Factor sobre el rectangle màxim (per defecte 1). */
   factor?: number;
 }
@@ -144,12 +182,12 @@ function reduccioPerPassos(origen: HTMLCanvasElement, rect: IRectangle, sortida:
 
 /**
  * Retalla `origen` (un fotograma sense mirall) al rectangle centrat 35:45 i el reescala a la mida de sortida
- * segons `ppp`, amb reducció per passos i `imageSmoothingQuality = 'high'`. No modifica `origen`.
+ * segons `opcions.sortida`, amb reducció per passos i `imageSmoothingQuality = 'high'`. No modifica `origen`.
  * Només retall i reescalat: cap retoc (RF-07).
  */
 export function retallaCentrat(origen: HTMLCanvasElement, opcions: IOpcionsRetall): HTMLCanvasElement {
   const rect = rectangleRetallCentrat(origen.width, origen.height, opcions.factor ?? 1);
-  return reduccioPerPassos(origen, rect, midaSortida(opcions.ppp));
+  return reduccioPerPassos(origen, rect, midaFinal(rect, opcions.sortida));
 }
 
 /**
@@ -157,9 +195,13 @@ export function retallaCentrat(origen: HTMLCanvasElement, opcions: IOpcionsRetal
  * rectangle sobresurt del fotograma, la part de fora queda BLANCA (neutra: és el color de fons oficial); la resta
  * de píxels no es toquen. No modifica `origen`.
  */
-export function retallaRectangle(origen: HTMLCanvasElement, rect: IRectangle, ppp: number): HTMLCanvasElement {
+export function retallaRectangle(
+  origen: HTMLCanvasElement,
+  rect: IRectangle,
+  opcionsSortida: IOpcionsSortida
+): HTMLCanvasElement {
   const dins = rect.x >= 0 && rect.y >= 0 && rect.x + rect.w <= origen.width && rect.y + rect.h <= origen.height;
-  const sortida = midaSortida(ppp);
+  const sortida = midaFinal(rect, opcionsSortida);
   if (dins) {
     return reduccioPerPassos(origen, rect, sortida);
   }

@@ -122,6 +122,32 @@ describe('resolConfig: validació de la configuració fusionada', () => {
     });
   });
 
+  it('sortida.mida: per defecte «original»; accepta «fixa»; un altre valor torna al per defecte amb avís', () => {
+    expect(CONFIG_PER_DEFECTE.sortida.mida).toBe('original');
+    expect(avis('{"sortida":{"mida":"fixa"}}').config.sortida.mida).toBe('fixa');
+    expect(avis('{"sortida":{"mida":"fixa"}}').avisos).toEqual([]);
+    ['"gran"', '5', 'null'].forEach((v) => {
+      const r = avis(`{"sortida":{"mida":${v}}}`);
+      expect(r.config.sortida.mida).toBe('original');
+      expect(r.avisos).toEqual([{ codi: 'valorInvalid', camp: 'sortida.mida' }]);
+    });
+  });
+
+  it('sortida.alcadaMaxPx: per defecte 2160; ha de ser un enter ≥ alçada mínima i ≤ 16384', () => {
+    expect(CONFIG_PER_DEFECTE.sortida.alcadaMaxPx).toBe(2160);
+    expect(avis('{"sortida":{"alcadaMaxPx":1080}}').config.sortida.alcadaMaxPx).toBe(1080);
+    expect(avis('{"sortida":{"alcadaMaxPx":1080}}').avisos).toEqual([]);
+    ['"x"', '100.5', '400', '99999', '0'].forEach((v) => {
+      const r = avis(`{"sortida":{"alcadaMaxPx":${v}}}`);
+      expect(r.config.sortida.alcadaMaxPx).toBe(2160);
+      expect(r.avisos).toEqual([{ codi: 'valorInvalid', camp: 'sortida.alcadaMaxPx' }]);
+    });
+    // Amb 600 ppp el mínim és 1063.
+    expect(avis('{"sortida":{"ppp":600,"alcadaMaxPx":1000}}').avisos).toEqual([
+      { codi: 'valorInvalid', camp: 'sortida.alcadaMaxPx' }
+    ]);
+  });
+
   it('un objecte substituït per null, array o primitiu es descarta', () => {
     ['null', '[1]', '7', '"x"'].forEach((valor) => {
       const r = avis(`{"llindars":${valor}}`);

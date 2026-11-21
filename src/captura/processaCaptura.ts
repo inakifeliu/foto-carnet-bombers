@@ -11,7 +11,7 @@ import { penalitzacioFora, TOLERANCIA_FORA, calculaRetallCap } from './retallCap
 import { rectangleVisor, retallaCentrat, retallaRectangle } from './retall';
 
 export interface IResultatCaptura {
-  /** Canvas retallat a la mida de sortida (qui el rep l'ha d'alliberar). */
+  /** Canvas retallat a la mida de sortida (config.sortida.mida; qui el rep l'ha d'alliberar). */
   retallada: HTMLCanvasElement;
   /** Puntuació 0-100; undefined si no hi havia anàlisi disponible. */
   puntuacio?: number;
@@ -24,16 +24,16 @@ export function processaCaptura(
   analitzador: IAnalitzador | undefined,
   config: IConfig
 ): IResultatCaptura {
-  const ppp = config.sortida.ppp;
+  const sortida = config.sortida;
   if (!analitzador) {
-    return { retallada: retallaCentrat(completa, { ppp }), avisos: ['avis.senseAnalisi'] };
+    return { retallada: retallaCentrat(completa, { sortida }), avisos: ['avis.senseAnalisi'] };
   }
   let mostra;
   try {
     mostra = analitzador.analitza(completa, completa.width, completa.height, { captura: true });
   } catch {
     // L'anàlisi falla però la foto no s'ha de perdre.
-    return { retallada: retallaCentrat(completa, { ppp }), avisos: ['avis.senseAnalisi'] };
+    return { retallada: retallaCentrat(completa, { sortida }), avisos: ['avis.senseAnalisi'] };
   }
   const avaluacio = avalua(mostra.mesures, config.llindars, { segmentacio: mostra.segmentacio });
   const avisos = missatgesAvis(avaluacio);
@@ -42,7 +42,7 @@ export function processaCaptura(
   if (mostra.mesures.nCares !== 1) {
     // Els avisos ja porten «No et veiem la cara» o «Només hi ha de sortir una persona».
     return {
-      retallada: retallaCentrat(completa, { ppp }),
+      retallada: retallaCentrat(completa, { sortida }),
       puntuacio: sensePuntuacio,
       avisos: [...avisos, 'avis.senseCara']
     };
@@ -50,7 +50,7 @@ export function processaCaptura(
   if (config.sortida.enquadrament === 'visor') {
     // La foto és exactament el que es veia al visor (rectangleVisor): sempre dins el fotograma, sense avís ni penalització.
     return {
-      retallada: retallaRectangle(completa, rectangleVisor(completa.width, completa.height), ppp),
+      retallada: retallaRectangle(completa, rectangleVisor(completa.width, completa.height), sortida),
       puntuacio: sensePuntuacio,
       avisos
     };
@@ -58,7 +58,7 @@ export function processaCaptura(
   const retall = calculaRetallCap(mostra.landmarks, mostra.mascara, completa.width, completa.height, config.sortida);
   if (!retall) {
     return {
-      retallada: retallaCentrat(completa, { ppp }),
+      retallada: retallaCentrat(completa, { sortida }),
       puntuacio: sensePuntuacio,
       avisos: [...avisos, 'avis.retallCentrat']
     };
@@ -66,7 +66,7 @@ export function processaCaptura(
   const foraDeFotograma = retall.fraccioFora > TOLERANCIA_FORA;
   const penalitzacio = penalitzacioFora(retall.fraccioFora, config.sortida.penalitzacioForaFotograma);
   return {
-    retallada: retallaRectangle(completa, retall.rect, ppp),
+    retallada: retallaRectangle(completa, retall.rect, sortida),
     puntuacio: calculaPuntuacio(avaluacio, config.pesosPuntuacio, penalitzacio),
     avisos: foraDeFotograma ? [...avisos, 'avis.retallFora'] : avisos
   };

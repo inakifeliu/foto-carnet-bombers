@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { useApp } from '../app/AppContext';
 import { nomFitxer } from '../app/formulari';
+import { pppSortida } from '../captura/retall';
 import { codificaJpeg, desaFitxer, entornDesatActual, recordaHandleDesat } from '../captura/desar';
 import { Boto } from '../components/Boto';
 import { Miniatura } from '../components/Miniatura';
@@ -23,7 +24,9 @@ export const P5Desar: React.FC = () => {
     setError(false);
     // IMPORTANT: `desaFitxer` s'invoca aquí mateix, dins el clic i sense cap await abans: obre el selector de
     // fitxers primer i només després codifica (RF-11).
-    desaFitxer(estat.matricula, () => codificaJpeg(foto.canvas, config.sortida.qualitatJpeg, config.sortida.ppp))
+    desaFitxer(estat.matricula, () =>
+      codificaJpeg(foto.canvas, config.sortida.qualitatJpeg, pppSortida(config.sortida, foto.canvas.height))
+    )
       .then((r) => {
         if (r.tipus === 'ok') {
           recordaHandleDesat(r.handle);
