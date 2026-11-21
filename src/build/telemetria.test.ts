@@ -2,6 +2,7 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { pathToFileURL } from 'url';
+import { HOSTS_FORMS } from '../app/formulari';
 
 // Els tests s'executen amb el directori de treball a l'arrel del projecte.
 const ARREL = process.cwd();
@@ -12,7 +13,14 @@ type Pegat = { aplica: (codi: string) => string };
 type Guarda = {
   sha256: (b: Buffer) => string;
   verifica: (html: string, opcions?: { hostsExtra?: string[]; hashLoaderWasm?: string }) => string[];
+  analitzaCsp: (html: string) => string[];
+  HOSTS_FORMS_GUARDA: string[];
 };
+
+/** La meta CSP real de src/index.html (la mateixa que ha de passar la guarda). */
+const META_CSP = /<meta\s[^>]*http-equiv="Content-Security-Policy"[^>]*>/i.exec(
+  fs.readFileSync(path.join(ARREL, 'src/index.html'), 'utf8')
+)![0];
 
 const sha = (fitxer: string): string => crypto.createHash('sha256').update(fs.readFileSync(fitxer)).digest('hex');
 
@@ -28,7 +36,9 @@ function htmlAmb(js: string, recursText = 'var a=1;'): string {
     }
   };
   return (
-    '<!doctype html><html><head></head><body><div id="arrel"></div>' +
+    '<!doctype html><html><head>' +
+    META_CSP +
+    '</head><body><div id="arrel"></div>' +
     `<script type="application/json" id="recursos-manifest">${JSON.stringify(manifest)}</script>` +
     `<script type="application/octet-stream" id="recurs-wasm-loader">${bytes.toString('base64')}</script>` +
     `<script>${js}</script></body></html>`
@@ -99,6 +109,53 @@ describe("guarda de l'HTML (verifica-html.mjs)", () => {
     );
   });
 
+  it("el host del Forms només s'accepta exacte (cap subdomini) i la llista coincideix amb la de l'app", () => {
+    const extra = { hostsExtra: ['forms.office.com'] };
+    expect(guarda.verifica(htmlAmb('x="https://forms.office.com/r?x=1"'), extra)).toEqual([]);
+    expect(guarda.verifica(htmlAmb('x="https://exemple.forms.office.com/r"'), extra).join()).toContain(
+      'exemple.forms.office.com'
+    );
+    expect(guarda.verifica(htmlAmb('x="https://forms.office.com.exemple.cat/r"'), extra).length).toBeGreaterThan(0);
+    expect(guarda.verifica(htmlAmb('x="https://forms.office.com@exemple.cat/r"'), extra).length).toBeGreaterThan(0);
+    expect(guarda.verifica(htmlAmb('x="https://sub.www.w3.org/x"')).length).toBeGreaterThan(0);
+    expect([...guarda.HOSTS_FORMS_GUARDA].sort()).toEqual([...HOSTS_FORMS].sort());
+  });
+
+  it('detecta wss://, ftp://, URL protocol-relatives i barres escapades', () => {
+    expect(guarda.verifica(htmlAmb('x="wss://exemple.cat/s"')).join()).toContain('ws/wss/ftp');
+    expect(guarda.verifica(htmlAmb("x='ws://exemple.cat/s'")).join()).toContain('ws/wss/ftp');
+    expect(guarda.verifica(htmlAmb('x="ftp://exemple.cat/f"')).join()).toContain('ws/wss/ftp');
+    expect(guarda.verifica(htmlAmb('x="//cdn.exemple.com/a.js"')).join()).toContain('protocol-relativa');
+    expect(guarda.verifica(htmlAmb('x=`//cdn.exemple.com`')).join()).toContain('protocol-relativa');
+    expect(guarda.verifica(htmlAmb('x="https:\\/\\/tercer.com\\/a"')).join()).toContain('tercer.com');
+    expect(guarda.verifica(htmlAmb('x="https:\\u002f\\u002ftercer.com"')).join()).toContain('tercer.com');
+    // Un comentari o una cadena que no és host (sense punt) no és cap falsa alarma.
+    expect(guarda.verifica(htmlAmb('x="//";y="a//b";z=1//2'))).toEqual([]);
+  });
+
+  it('exigeix la meta CSP i que no estigui relaxada', () => {
+    expect(guarda.analitzaCsp(META_CSP)).toEqual([]);
+    const sense = htmlAmb('').replace(META_CSP, '');
+    expect(guarda.verifica(sense).join()).toContain('exactament una meta');
+    const relaxa = (de: string, a: string): string => htmlAmb('').replace(META_CSP, META_CSP.replace(de, a));
+    expect(guarda.verifica(relaxa('connect-src blob:', 'connect-src blob: https:')).join()).toContain('connect-src');
+    expect(guarda.verifica(relaxa('connect-src blob:', 'connect-src *')).join()).toContain('"*"');
+    expect(guarda.verifica(relaxa('connect-src blob:', "connect-src 'self'")).join()).toContain("'self'");
+    expect(guarda.verifica(relaxa("default-src 'none'", "default-src 'self'")).join()).toContain('default-src');
+    expect(
+      guarda.verifica(relaxa("script-src 'unsafe-inline'", "script-src 'unsafe-eval' 'unsafe-inline'")).join()
+    ).toContain("'unsafe-eval'");
+    expect(guarda.verifica(relaxa('; connect-src blob:', '')).join()).toContain('falta la directiva connect-src');
+    expect(guarda.verifica(relaxa("form-action 'none'", "form-action 'none'; frame-src https:")).join()).toContain(
+      'frame-src'
+    );
+    // La meta ha d'anar abans del primer <script>.
+    const tard = htmlAmb('')
+      .replace(META_CSP, '')
+      .replace('</body>', META_CSP + '</body>');
+    expect(guarda.verifica(tard).join()).toContain('abans de qualsevol <script>');
+  });
+
   it('detecta recursos externs (<script src>, <link href>)', () => {
     const base = htmlAmb('');
     expect(guarda.verifica(base.replace('<script>', '<script src="a.js">')).join()).toContain('<script src');
@@ -133,6 +190,7 @@ describe("guarda de l'HTML (verifica-html.mjs)", () => {
       }
     };
     const html =
+      META_CSP +
       `<script type="application/json" id="recursos-manifest">${JSON.stringify(manifest)}</script>` +
       `<script type="application/octet-stream" id="recurs-wasm">${wasmFals.toString('base64')}</script>`;
     expect(guarda.verifica(html)).toEqual([]);

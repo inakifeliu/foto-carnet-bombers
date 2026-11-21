@@ -8,7 +8,11 @@
  *  1. Cadenes prohibides: "googleapis", "odml.", "google-analytics". Excepció documentada:
  *     "type.googleapis.com/" és l'identificador de tipus de protobuf (typeUrl) que MediaPipe fa
  *     servir internament; no és cap petició.
- *  2. Tota URL http(s):// ha de ser d'un host de ALLOWLIST_HOSTS (o del host del Forms configurat).
+ *  2. Tota URL http(s):// ha de ser d'un host de ALLOWLIST_HOSTS (o del host del Forms configurat),
+ *     amb comparació EXACTA del host (cap subdomini). Qualsevol URL ws(s):// o ftp:// és un error,
+ *     i també les URL protocol-relatives (//host.tld/) en cadenes i les barres escapades (https:\/\/).
+ *  2b. L'HTML ha de dur la meta Content-Security-Policy sense relaxar (vegeu analitzaCsp): és el bloqueig
+ *     de xarxa EN EXECUCIÓ; la resta de la guarda només inspecciona text.
  *  3. Cap <script src=...> ni <link href=...> (tot ha d'anar incrustat).
  *  4. Les imatges `data:` SVG (logos) es descodifiquen i s'inspeccionen com a text.
  *
@@ -49,6 +53,77 @@ export const EXCEPCIONS_PROHIBIDES = ['type.googleapis.com/'];
  */
 export const ALLOWLIST_HOSTS = ['www.w3.org', 'reactjs.org'];
 
+/**
+ * Tokens permesos per directiva de la meta CSP de src/index.html. Cal que hi siguin TOTES les directives
+ * i que cap tingui un token fora d'aquesta llista (cap http(s):, ws(s):, *, 'self', 'unsafe-eval'...).
+ * Si cal obrir alguna cosa nova, s'ha de fer a la meta, aquí i documentar-ho a src/index.html.
+ */
+export const CSP_PERMESA = {
+  'default-src': ["'none'"],
+  'script-src': ["'unsafe-inline'", "'wasm-unsafe-eval'", 'blob:'],
+  'connect-src': ['blob:'],
+  'img-src': ['data:', 'blob:'],
+  'style-src': ["'unsafe-inline'"],
+  'media-src': ['blob:', 'mediastream:'],
+  'worker-src': ['blob:'],
+  'font-src': ['data:'],
+  'form-action': ["'none'"],
+  'base-uri': ["'none'"]
+};
+
+/** Directives que han de ser exactament aquests tokens (no un subconjunt). */
+const CSP_EXACTA = ['default-src', 'form-action', 'base-uri', 'connect-src'];
+
+/** Comprova la meta CSP de l'HTML (presència, abans de qualsevol <script>, i sense relaxar). */
+export function analitzaCsp(html) {
+  const problemes = [];
+  const metes = [...html.matchAll(/<meta\b[^>]*http-equiv\s*=\s*["']?content-security-policy["']?[^>]*>/gi)];
+  if (metes.length !== 1) {
+    return [`CSP: hi ha d'haver exactament una meta Content-Security-Policy (n'hi ha ${metes.length})`];
+  }
+  const primerScript = html.search(/<script\b/i);
+  if (primerScript !== -1 && metes[0].index > primerScript) {
+    problemes.push("CSP: la meta ha d'anar abans de qualsevol <script>");
+  }
+  const c = /\scontent\s*=\s*(?:"([^"]*)"|'([^']*)')/i.exec(metes[0][0]);
+  if (!c) {
+    return [...problemes, 'CSP: la meta no té atribut content'];
+  }
+  const politica = new Map();
+  for (const part of (c[1] ?? c[2]).split(';')) {
+    const [nom, ...tokens] = part.trim().split(/\s+/);
+    if (nom) {
+      politica.set(
+        nom.toLowerCase(),
+        tokens.map((t) => t.toLowerCase())
+      );
+    }
+  }
+  for (const [nom, tokens] of politica) {
+    if (!(nom in CSP_PERMESA)) {
+      problemes.push(`CSP: directiva no prevista "${nom}"`);
+      continue;
+    }
+    for (const token of tokens) {
+      if (!CSP_PERMESA[nom].includes(token)) {
+        problemes.push(`CSP: ${nom} conté el token no permès "${token}"`);
+      }
+    }
+  }
+  for (const nom of Object.keys(CSP_PERMESA)) {
+    const tokens = politica.get(nom);
+    if (tokens === undefined || tokens.length === 0) {
+      problemes.push(`CSP: falta la directiva ${nom}`);
+    } else if (CSP_EXACTA.includes(nom) && tokens.join(' ') !== CSP_PERMESA[nom].join(' ')) {
+      problemes.push(`CSP: ${nom} s'ha modificat (ha de ser exactament: ${CSP_PERMESA[nom].join(' ')})`);
+    }
+  }
+  return problemes;
+}
+
+/** Còpia de HOSTS_FORMS (src/app/formulari.ts); un test comprova que coincideixen. */
+export const HOSTS_FORMS_GUARDA = ['forms.office.com', 'forms.microsoft.com', 'forms.cloud.microsoft'];
+
 export const ID_MANIFEST = 'recursos-manifest';
 const PREFIX_ID = 'recurs-';
 
@@ -63,8 +138,9 @@ function hostDe(url) {
   return m ? m[1].toLowerCase() : '';
 }
 
+/** Comparació EXACTA del host (cap subdomini ni sufix). */
 function hostPermes(host, hostsExtra) {
-  return [...ALLOWLIST_HOSTS, ...hostsExtra].some((h) => host === h || host.endsWith('.' + h));
+  return [...ALLOWLIST_HOSTS, ...hostsExtra].includes(host);
 }
 
 /** Elimina comentaris `/* *\/` i `// ...` d'un JS no minificat (suficient per al loader d'Emscripten). */
@@ -85,14 +161,29 @@ export function analitzaText(nom, text, hostsExtra = []) {
       problemes.push(`${nom}: conté la cadena prohibida "${prohibida}"`);
     }
   }
+  // Barres escapades (https:\/\/, \u002f, \x2f) es normalitzen abans de buscar URL.
+  const normal = net.replace(/\\u002f|\\x2f|\\\//gi, '/');
   const hosts = new Set();
-  for (const m of net.matchAll(/https?:\/\/[^\s"'`<>\\)]+/gi)) {
+  for (const m of normal.matchAll(/https?:\/\/[^\s"'`<>\\)]+/gi)) {
     const host = hostDe(m[0]);
     if (host === '' || !hostPermes(host, hostsExtra)) {
       hosts.add(host || m[0]);
     }
   }
   hosts.forEach((h) => problemes.push(`${nom}: URL a un host no permès "${h}"`));
+  const insegurs = new Set();
+  for (const m of normal.matchAll(/\b(?:wss?|ftp):\/\/[^\s"'`<>\\)]*/gi)) {
+    insegurs.add(m[0]);
+  }
+  insegurs.forEach((u) => problemes.push(`${nom}: URL amb un esquema no permès (ws/wss/ftp) "${u}"`));
+  // URL protocol-relatives ("//host.tld/...") com a cadena, atribut o url(...).
+  const relatives = new Set();
+  for (const m of normal.matchAll(
+    /(?:["'`(=]\s*)(\/\/[a-z0-9-]+(?:\.[a-z0-9-]+)+(?=[/:?#"'`)\s]|$)[^\s"'`<>\\)]*)/gi
+  )) {
+    relatives.add(m[1]);
+  }
+  relatives.forEach((u) => problemes.push(`${nom}: URL protocol-relativa "${u}"`));
   return problemes;
 }
 
@@ -157,16 +248,29 @@ export function verifica(html, { hostsExtra = [], hashLoaderWasm } = {}) {
     problemes.push('HTML: conté @import de CSS');
   }
 
+  // 2b. Meta CSP (bloqueig de xarxa en execució).
+  problemes.push(...analitzaCsp(text));
+
   // 1/2. Text restant (JS, CSS, HTML, manifest).
   problemes.push(...analitzaText('HTML', text, hostsExtra));
   return problemes;
 }
 
-/** Host del Forms de la configuració del repositori (si és llegible). */
+/** Ruta de la configuració efectiva: FCB_CONFIG (igual que el build) o config/config.json. */
+export function rutaConfigEfectiva() {
+  return process.env.FCB_CONFIG ? path.resolve(process.env.FCB_CONFIG) : path.join(arrel, 'config/config.json');
+}
+
+/**
+ * Host del Forms de la configuració EFECTIVA (llegible): FCB_CONFIG fusionada sobre
+ * config.default.json, com fa el build. Només s'accepta el host exacte (cap subdomini).
+ */
 function hostFormsDeConfig() {
   try {
-    const cfg = JSON.parse(fs.readFileSync(path.join(arrel, 'config/config.json'), 'utf8'));
-    return [hostDe(String(cfg.forms.urlPlantilla))].filter(Boolean);
+    const defecte = JSON.parse(fs.readFileSync(path.join(arrel, 'src/config/config.default.json'), 'utf8'));
+    const cfg = JSON.parse(fs.readFileSync(rutaConfigEfectiva(), 'utf8'));
+    const url = cfg?.forms?.urlPlantilla ?? defecte.forms.urlPlantilla;
+    return [hostDe(String(url))].filter((h) => HOSTS_FORMS_GUARDA.includes(h));
   } catch {
     return [];
   }

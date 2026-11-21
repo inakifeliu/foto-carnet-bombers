@@ -2,6 +2,27 @@
 <html lang="ca">
   <head>
     <meta charset="utf-8" />
+    <!--
+      Content-Security-Policy (spec §5): l'aplicació no pot fer cap connexió externa. Cada excepció:
+      - default-src 'none': tot el que no s'obre explícitament queda bloquejat.
+      - script-src 'unsafe-inline': el JS de l'app va incrustat en aquest fitxer (no hi ha cap src extern).
+      - script-src 'wasm-unsafe-eval': compilar/instanciar el WASM de MediaPipe (no habilita eval de JS).
+      - script-src blob:: MediaPipe carrega el loader del WASM com a URL blob: dels recursos incrustats.
+      - connect-src blob:: el loader d'Emscripten fa fetch/XHR de la URL blob: del .wasm. Cap http(s)/ws(s).
+      - img-src data: blob:: logos (data:) i, a les fases següents, fotogrames i miniatures (blob:).
+      - style-src 'unsafe-inline': CSS incrustat i atributs style de React.
+      - media-src blob: mediastream:: vídeo de la càmera (getUserMedia) i possibles blobs.
+      - worker-src blob:: per si MediaPipe crea un worker a partir d'un blob:.
+      - font-src data:: només fonts incrustades; cap tipografia externa.
+      - form-action 'none' i base-uri 'none': cap enviament de formularis ni canvi de base.
+      Obrir el Forms (window.open / enllaç target=_blank) és una navegació, no una connexió: no queda afectada.
+      frame-ancestors no funciona en una meta; el context d'iframe es detecta a src/arrenca.tsx (RF-19).
+      La guarda (scripts/verifica-html.mjs) comprova que aquesta meta hi és i no s'ha relaxat.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval' blob:; connect-src blob:; img-src data: blob:; style-src 'unsafe-inline'; media-src blob: mediastream:; worker-src blob:; font-src data:; form-action 'none'; base-uri 'none'"
+    />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>@@TITOL@@</title>
     <noscript
