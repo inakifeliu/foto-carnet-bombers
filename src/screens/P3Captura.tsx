@@ -22,13 +22,21 @@ export const P3Captura: React.FC = () => {
   const [revisio, setRevisio] = React.useState<boolean>(false);
   const [errorCaptura, setErrorCaptura] = React.useState<boolean>(false);
   const [ocupat, setOcupat] = React.useState<boolean>(false);
+  // Només es pot fer la foto quan el vídeo ja té fotograma (videoWidth > 0).
+  const [videoListo, setVideoListo] = React.useState<boolean>(false);
+  const botoAltra = React.useRef<HTMLButtonElement>(null);
+  const botoProu = React.useRef<HTMLButtonElement>(null);
+  const botoFeta = React.useRef<HTMLButtonElement>(null);
 
   React.useEffect(() => {
     const el = video.current;
+    setVideoListo(false);
     if (el) {
       el.srcObject = camera.flux ?? null;
     }
   }, [camera.flux]);
+
+  const alVideoListo = (): void => setVideoListo((video.current?.videoWidth ?? 0) > 0);
 
   const maxAssolit = fotos.length >= config.maxFotos;
 
@@ -40,6 +48,7 @@ export const P3Captura: React.FC = () => {
     setOcupat(true);
     setErrorCaptura(false);
     let completa: HTMLCanvasElement | undefined;
+    let retallada: HTMLCanvasElement | undefined;
     try {
       // Resolució completa del fotograma, sense mirall (només es dibuixa, mai es transforma).
       completa = document.createElement('canvas');
@@ -50,10 +59,15 @@ export const P3Captura: React.FC = () => {
         throw new Error('Sense context 2D');
       }
       ctx.drawImage(el, 0, 0, completa.width, completa.height);
-      const retallada = retallaCentrat(completa, { ppp: config.sortida.ppp });
+      retallada = retallaCentrat(completa, { ppp: config.sortida.ppp });
       afegeixFoto(await creaFoto(retallada));
       setRevisio(true);
     } catch {
+      // Si `creaFoto` falla, ningú no s'endú el canvas retallat: s'allibera aquí.
+      if (retallada) {
+        retallada.width = 0;
+        retallada.height = 0;
+      }
       setErrorCaptura(true);
     } finally {
       if (completa) {
@@ -64,8 +78,19 @@ export const P3Captura: React.FC = () => {
     }
   };
 
-  const potCapturar = camera.flux !== undefined && !camera.carregant && !revisio && !maxAssolit;
+  const potCapturar = camera.flux !== undefined && !camera.carregant && videoListo && !revisio && !maxAssolit;
   const enRevisio = revisio || maxAssolit;
+
+  // Accessibilitat: en acabar la captura el focus va a l'acció següent (el botó pressionat desapareix).
+  const eraRevisio = React.useRef<boolean>(enRevisio);
+  React.useEffect(() => {
+    if (enRevisio && !eraRevisio.current) {
+      (botoAltra.current ?? botoProu.current)?.focus();
+    } else if (!enRevisio && eraRevisio.current) {
+      botoFeta.current?.focus();
+    }
+    eraRevisio.current = enRevisio;
+  }, [enRevisio]);
 
   return (
     <section className={styles.pantalla}>
@@ -116,6 +141,8 @@ export const P3Captura: React.FC = () => {
             autoPlay
             playsInline
             muted
+            onLoadedMetadata={alVideoListo}
+            onLoadedData={alVideoListo}
             aria-label={t('p3.video')}
             data-camera=""
           />
@@ -123,13 +150,7 @@ export const P3Captura: React.FC = () => {
           <SiluetaGuia />
         </div>
         <div className={styles.panell}>
-          <div
-            className={styles.guia}
-            role="status"
-            aria-live="polite"
-            aria-atomic="true"
-            aria-label={t('p3.guiaRegio')}
-          >
+          <div className={styles.guia} role="status" aria-live="polite" aria-atomic="true">
             {revisio ? t('p3.capturada', { n: fotos.length }) : t('p3.guia')}
           </div>
           <p className={styles.comptador}>
@@ -163,14 +184,16 @@ export const P3Captura: React.FC = () => {
         {enRevisio ? (
           <>
             {!maxAssolit && (
-              <Boto variant="secundari" onClick={() => setRevisio(false)}>
+              <Boto variant="secundari" refBoto={botoAltra} onClick={() => setRevisio(false)}>
                 {t('p3.altra')}
               </Boto>
             )}
-            <Boto onClick={() => dispatch({ tipus: 'ENDAVANT' })}>{t('p3.prouFotos')}</Boto>
+            <Boto refBoto={botoProu} onClick={() => dispatch({ tipus: 'ENDAVANT' })}>
+              {t('p3.prouFotos')}
+            </Boto>
           </>
         ) : (
-          <Boto onClick={() => void fesFoto()} disabled={!potCapturar || ocupat}>
+          <Boto refBoto={botoFeta} onClick={() => void fesFoto()} disabled={!potCapturar || ocupat}>
             {t('p3.feta')}
           </Boto>
         )}
