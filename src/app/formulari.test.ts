@@ -52,6 +52,12 @@ describe('validaMatricula', () => {
     expect(validaMatricula('A-12_3', '.*').valida).toBe(true);
   });
 
+  it('rebutja espais interns encara que la regex els admeti', () => {
+    expect(validaMatricula('12 345', '.*').valida).toBe(false);
+    expect(validaMatricula('12	345', '.*').valida).toBe(false);
+    expect(validaMatricula('12 345', REGEX).valida).toBe(false);
+  });
+
   it('marca la regex invàlida', () => {
     const r = validaMatricula('12345', '([');
     expect(r.valida).toBe(false);

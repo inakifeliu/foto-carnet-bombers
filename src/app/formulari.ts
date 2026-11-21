@@ -15,12 +15,13 @@ const CARACTERS_PROHIBITS = /[/\\:*?"<>|\u0000-\u001f]/;
 const NOMS_RESERVATS_WINDOWS = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i;
 
 /**
- * Indica si la matrícula és segura com a nom de fitxer (`{matricula}.jpg`): sense separadors
+ * Indica si la matrícula és segura com a nom de fitxer (`{matricula}.jpg`): sense espais, sense separadors
  * de ruta ni caràcters prohibits, sense `..`, ni punts o espais als extrems, ni noms reservats.
  */
 export function esNomFitxerSegur(matricula: string): boolean {
   return (
     matricula !== '' &&
+    !/\s/.test(matricula) &&
     !CARACTERS_PROHIBITS.test(matricula) &&
     matricula.indexOf('..') === -1 &&
     !/^[. ]|[. ]$/.test(matricula) &&
