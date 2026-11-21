@@ -516,6 +516,8 @@ Esquelet:
 **Estat (branca `html-autonom/fase-1`)**: implementat i provat amb tests i amb Edge headless (càmera simulada; el diàleg de desat se simula amb un mock pel mateix camí de codi). **Pendent**: la prova manual al Surface (càmera real, diàleg de Windows real i propietats del fitxer desat: 413×531 px i 300 ppp). A P3 només hi ha captura manual (sense semàfors ni captura automàtica, Fase 2/3) i la puntuació de P4 és provisional (simulada).
 
 ### Fase 2 — Visió i guiatge en temps real
+
+**Estat (branca `html-autonom/fase-2`)**: implementat i provat amb tests unitaris (378) i Edge headless amb càmera simulada sense cara. **Pendent**: prova manual amb una cara real al Surface i calibratge dels llindars (vegeu README, «Visió i guiatge»).
 - Càrrega de MediaPipe des dels recursos incrustats (RF-02, RF-03, RF-20), bucle d'anàlisi (RF-04).
 - Tots els controls de RF-05, semàfors, missatge prioritari i silueta guia.
 - Retall intel·ligent RF-07.

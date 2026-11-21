@@ -3,7 +3,7 @@
 Aplicació en **un únic fitxer HTML autònom** perquè els bombers del SPCPEIS es facin ells mateixos la foto de carnet amb el polo de l'uniforme: captura guiada amb webcam, retall automàtic a 35 × 45 mm, desat local com a `MATRICULA.jpg` i pujada via Microsoft Forms. El fitxer es distribueix per SharePoint, OneDrive o correu i s'obre amb doble clic a Edge, sense instal·lar res i sense connexió (només el Forms necessita xarxa).
 
 - Especificació completa (v0.3): [docs/ESPECIFICACIO.md](docs/ESPECIFICACIO.md)
-- Estat: **Fase 1 (captura bàsica i sortida) implementada**, pendent de la prova manual al Surface. Funcionen la matrícula amb validació (P2), la càmera amb selector i errors en català (P3), la captura **manual**, el retall centrat 35:45 simple, el JPEG amb JFIF (413×531 px, 300 ppp, sense EXIF) i el desat a Imatges (P5, amb alternativa a Baixades). Encara és **simulat/pendent**: els semàfors i la captura automàtica (Fases 2–3), la puntuació de P4 (valor provisional), el retall amb landmarks (Fase 2), l'esborrat de la foto (RF-15) i el Forms real (Fases 3–5).
+- Estat: **Fase 2 (visió i guiatge en temps real) implementada**, pendent de la prova manual al Surface amb una cara real; la Fase 1 (captura bàsica i sortida) també hi està pendent. A P3 hi ha els 11 semàfors RF-05, el missatge únic, la puntuació real a P4 i el retall intel·ligent RF-07; el mode diagnòstic (RF-18) mostra valors en directe i baixa un JSON sense imatge. **Sense captura automàtica ni compte enrere (Fase 3).** Detall de la Fase 1: Funcionen la matrícula amb validació (P2), la càmera amb selector i errors en català (P3), la captura **manual**, el retall centrat 35:45 simple, el JPEG amb JFIF (413×531 px, 300 ppp, sense EXIF) i el desat a Imatges (P5, amb alternativa a Baixades). Encara és **simulat/pendent**: els semàfors i la captura automàtica (Fases 2–3), la puntuació de P4 (valor provisional), el retall amb landmarks (Fase 2), l'esborrat de la foto (RF-15) i el Forms real (Fases 3–5).
 - La branca `fase-0/viabilitat-esquelet` conté la versió anterior com a web part SPFx (v0.2). És només un arxiu: no es fusiona.
 
 ## Requisits
@@ -105,7 +105,7 @@ Fitxer final (v0.1.0): **≈ 10,7 MB** (objectiu < 12 MB). Domina el WASM (14,0 
 
 ## Mode diagnòstic (base de RF-18)
 
-`Ctrl + Alt + D` o `#debug` al final de l'adreça mostra un panell amb versió, data de compilació i resum de la configuració, un botó que **comprova tots els recursos incrustats** (descodifica, descomprimeix i verifica SHA-256 i `WebAssembly.validate`) i un altre que prova la càrrega de MediaPipe amb els recursos incrustats. Mai mostra cap imatge. El diagnòstic complet és de la Fase 2.
+`Ctrl + Alt + D` o `#debug` al final de l'adreça mostra un panell amb versió, data de compilació i resum de la configuració, un botó que **comprova tots els recursos incrustats** (descodifica, descomprimeix i verifica SHA-256 i `WebAssembly.validate`) i un altre que prova la càrrega de MediaPipe amb els recursos incrustats. Mai mostra cap imatge. En la Fase 2 també mostra valors en directe, rendiment (fps, ms, delegat), la superposició (màscara, zona del tors, retall previst) i baixa un JSON de diagnòstic (valors, versió i configuració; mai imatge ni matrícula).
 
 ## Captura i sortida (Fase 1)
 
@@ -132,3 +132,11 @@ A `src/assets/brand/` (no s'han de modificar ni recolorir, §6):
 - `segell_historic_bombers.png` — segell històric (manual, p. 5)
 - `AJBCN_Sign_Com_Negre_Transparent_0.svg` — signatura de l'Ajuntament en negre (capçalera)
 - `AJBCN_Sign_Com_Vermell_Transparent.svg` — signatura de l'Ajuntament en vermell `#FF2828` (peu i pantalla final)
+
+## Visió i guiatge (Fase 2)
+
+- **Angles**: yaw/pitch/roll de la matriu de transformació facial de MediaPipe (column-major, R = Ry·Rx·Rz). Els signes es poden invertir amb `llindars.yawSigne` i `pitchSigne` (±1) si a la càmera real surten girats. Els missatges direccionals tenen en compte el mirall.
+- **Marge ambre**: `llindars.margeAmbar` (0,25 per defecte): zona ambre al voltant del llindar verd.
+- **Captura**: es reanalitza el fotograma complet en mode VIDEO de MediaPipe (marques de temps creixents); el mode IMAGE necessitaria models separats.
+- **Retall fora del fotograma**: s'omple de blanc, s'avisa («Massa a prop / a la vora») i es resta `sortida.penalitzacioForaFotograma` a la puntuació.
+- **Prova a Edge**: `npm run prova-edge` va amb `--disable-gpu` (GL per programari) i càmera simulada sense cara: valida càrrega sota CSP, bucle ≥ 10 fps, «No et veiem la cara», confirmació, JSON sense imatge. **Amb cara real no s'ha provat** (cap vídeo local); opcional `--video fitxer.y4m`.
