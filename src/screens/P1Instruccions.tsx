@@ -1,8 +1,10 @@
 import * as React from 'react';
 import { useApp } from '../app/AppContext';
 import { Boto } from '../components/Boto';
+import { ICONES_INSTRUCCIONS } from '../components/IconesInstruccions';
 import { TextRic } from '../components/TextRic';
 import { ClauI18n, t } from '../i18n';
+import { Titol } from '../components/Titol';
 import styles from '../styles/brand.module.css';
 
 const ELEMENTS: ClauI18n[] = [
@@ -21,14 +23,13 @@ export const P1Instruccions: React.FC = () => {
   const { dispatch } = useApp();
   return (
     <section className={styles.pantalla}>
-      <h1 className={styles.titol}>{t('p1.titol')}</h1>
+      <Titol>{t('p1.titol')}</Titol>
       <p className={styles.text}>{t('p1.intro')}</p>
       <ol className={styles.llistaInstruccions}>
         {ELEMENTS.map((clau, i) => (
           <li key={clau} className={styles.instruccio}>
-            {/* Placeholder d'icona: la Fase 2 hi posarà les il·lustracions. */}
             <span className={styles.iconaInstruccio} aria-hidden="true">
-              {i + 1}
+              {React.createElement(ICONES_INSTRUCCIONS[i])}
             </span>
             <span className={styles.textInstruccio}>
               <TextRic text={t(clau)} />
