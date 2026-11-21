@@ -62,7 +62,7 @@ describe('P6: avís sense connexió', () => {
     expect(div.querySelector('[data-offline]')?.textContent).toBe(
       'Cal connexió a internet per enviar el formulari. La foto ja està desada a Imatges; pots enviar-la més tard.'
     );
-    expect(div.textContent).toContain(t('p6.senseConnexio'));
+    expect(div.textContent).toContain(t('p6.senseConnexio', { carpeta: 'Imatges' }));
     desmonta();
   });
 

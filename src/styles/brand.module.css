@@ -281,6 +281,17 @@
   font-size: 16px;
 }
 
+.video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* object-fit: cover mostra el mateix rectangle 35:45 centrat que després es retalla. */
+  object-fit: cover;
+  /* Mirall NOMÉS a la visualització; la foto desada no el té (RF-06). */
+  transform: scaleX(-1);
+}
+
 .silueta {
   position: absolute;
   inset: 0;
@@ -394,6 +405,17 @@
   font-size: 16px;
   font-weight: 700;
   color: var(--bcn-vermell-text);
+}
+
+.miniaturaImg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fotoItemPetit {
+  width: 96px;
 }
 
 .previa {

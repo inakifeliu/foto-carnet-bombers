@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useApp } from '../app/AppContext';
+import { clauCarpeta } from '../captura/desar';
 import { construeixUrlForms, diagnosticaPlantilla, nomFitxer } from '../app/formulari';
 import { Boto } from '../components/Boto';
 import { Modal } from '../components/Modal';
@@ -36,6 +37,7 @@ export const P6Forms: React.FC = () => {
   const url = construeixUrlForms(config.forms.urlPlantilla, estat.matricula);
   const diagnostic = diagnosticaPlantilla(config.forms.urlPlantilla);
   const fitxer = nomFitxer(estat.matricula);
+  const carpeta = t(clauCarpeta(estat.desti));
 
   const obreFormulari = (): void => {
     // Ha de ser dins del gestor del clic per evitar el bloqueig de finestres emergents (RF-13).
@@ -50,7 +52,7 @@ export const P6Forms: React.FC = () => {
       <p className={styles.text}>{t('p6.text')}</p>
       {senseConnexio && (
         <p className={styles.nota} role="status" data-offline="">
-          {t('p6.senseConnexio')}
+          {t('p6.senseConnexio', { carpeta })}
         </p>
       )}
       {!url && (
@@ -82,7 +84,7 @@ export const P6Forms: React.FC = () => {
               <TextRic text={t('p6.pas2')} />
             </li>
             <li>
-              <TextRic text={t('p6.pas3', { fitxer })} />
+              <TextRic text={t('p6.pas3', { fitxer, carpeta })} />
             </li>
             <li>
               <TextRic text={t('p6.pas4')} />
