@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useApp } from '../app/AppContext';
+import { nomFitxer } from '../app/formulari';
 import { clauCarpeta } from '../captura/desar';
 import { Boto } from '../components/Boto';
 import { t } from '../i18n';
@@ -19,7 +20,12 @@ export const P7Final: React.FC = () => {
       </div>
       <h1 className={styles.titol}>{t('p7.titol')}</h1>
       <p className={styles.text}>{t('p7.text')}</p>
-      <p className={styles.text}>{t('p7.recordatori', { carpeta: t(clauCarpeta(estat.desti)) })}</p>
+      <p className={styles.text}>
+        {t('p7.recordatori', {
+          fitxer: estat.nomDesat || nomFitxer(estat.matricula),
+          carpeta: t(clauCarpeta(estat.desti))
+        })}
+      </p>
       <div className={styles.accions}>
         <Boto onClick={reinicia}>{t('p7.comencarDeNou')}</Boto>
       </div>

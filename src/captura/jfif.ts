@@ -59,7 +59,7 @@ export function escriuJfif(jpeg: Uint8Array, ppp: number): Uint8Array {
   let trobatSos = false;
   while (pos < jpeg.length) {
     if (jpeg[pos] !== 0xff) {
-      throw new Error('JPEG malformat: es esperava un marcador a la posició ' + pos);
+      throw new Error('JPEG malformat: s’esperava un marcador a la posició ' + pos);
     }
     // Els bytes de farciment FF abans d'un marcador són vàlids.
     let marcador = jpeg[pos + 1];
@@ -79,6 +79,13 @@ export function escriuJfif(jpeg: Uint8Array, ppp: number): Uint8Array {
     }
     if (marcador === EOI) {
       throw new Error('JPEG sense dades d’imatge (SOS)');
+    }
+    // Marcadors sense longitud (TEM 0x01, RSTn D0–D7): només ocupen 2 bytes. No haurien d'aparèixer abans del SOS,
+    // però si hi són es copien tal qual i es continua (llegir-ne la «longitud» desquadraria tot el fitxer).
+    if (marcador === 0x01 || (marcador >= 0xd0 && marcador <= 0xd7)) {
+      segments.push(jpeg.subarray(inici, inici + 2));
+      pos = inici + 2;
+      continue;
     }
     if (inici + 4 > jpeg.length) {
       throw new Error('JPEG truncat');

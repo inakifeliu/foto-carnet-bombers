@@ -60,9 +60,8 @@ describe('P6: avís sense connexió', () => {
     posaOnLine(false);
     const { div, desmonta } = monta();
     expect(div.querySelector('[data-offline]')?.textContent).toBe(
-      'Cal connexió a internet per enviar el formulari. La foto ja està desada a Imatges; pots enviar-la més tard.'
+      'Cal connexió a internet per enviar el formulari. La foto ja la tens desada: la trobaràs a la carpeta on l'has desada (per defecte, Imatges). Pots enviar-la més tard.'
     );
-    expect(div.textContent).toContain(t('p6.senseConnexio', { carpeta: 'Imatges' }));
     desmonta();
   });
 

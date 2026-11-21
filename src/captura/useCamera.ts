@@ -35,7 +35,7 @@ export function useCamera(): IEstatCamera {
   const [cameres, setCameres] = React.useState<ICamera[]>([]);
   const [deviceIdActual, setDeviceIdActual] = React.useState<string | undefined>(undefined);
   const [resolucioBaixa, setResolucioBaixa] = React.useState<IEstatCamera['resolucioBaixa']>(undefined);
-  // Cada petició té un número: si en arriba una de més nova, la resposta antiga s'aturar i s'ignora.
+  // Cada petició té un número: si en arriba una de més nova, la resposta antiga s'atura i s'ignora.
   const peticio = React.useRef(0);
   const fluxActual = React.useRef<MediaStream | undefined>(undefined);
   const [intents, setIntents] = React.useState(0);

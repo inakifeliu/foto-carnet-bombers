@@ -31,6 +31,8 @@ export interface IEstat {
   fotoTriada: number;
   /** On s'ha desat la foto a P5: carpeta Imatges (selector de fitxers) o Baixades (alternativa). */
   desti: DestiDesat;
+  /** Nom real del fitxer desat quan el navegador el diu (buit si no es coneix: es fa servir `{matricula}.jpg`). */
+  nomDesat: string;
   /** Resultat de la detecció de funcionalitats; si és false l'app queda a NoCompatible. */
   compatible: boolean;
 }
@@ -40,7 +42,7 @@ export type Accio =
   | { tipus: 'ENRERE' }
   | { tipus: 'DESA_MATRICULA'; matricula: string }
   | { tipus: 'TRIA_FOTO'; index: number }
-  | { tipus: 'DESAT'; desti: DestiDesat }
+  | { tipus: 'DESAT'; desti: DestiDesat; nom?: string }
   | { tipus: 'REINICIA' };
 
 export function estatInicial(compatible: boolean): IEstat {
@@ -49,6 +51,7 @@ export function estatInicial(compatible: boolean): IEstat {
     matricula: '',
     fotoTriada: 0,
     desti: 'imatges',
+    nomDesat: '',
     compatible
   };
 }
@@ -79,7 +82,7 @@ export function reductor(estat: IEstat, accio: Accio): IEstat {
     case 'TRIA_FOTO':
       return { ...estat, fotoTriada: accio.index };
     case 'DESAT':
-      return { ...estat, desti: accio.desti };
+      return { ...estat, desti: accio.desti, nomDesat: accio.nom ?? '' };
     case 'REINICIA':
       return estatInicial(estat.compatible);
     default:

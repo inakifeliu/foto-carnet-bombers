@@ -122,7 +122,7 @@ describe('retallaCentrat (amb un context 2D simulat)', () => {
     expect([origen.width, origen.height]).toEqual([1920, 1080]);
   });
 
-  it('600 ppp dóna 827×1063', () => {
+  it('600 ppp dona 827×1063', () => {
     const origen = document.createElement('canvas');
     origen.width = 1920;
     origen.height = 1080;

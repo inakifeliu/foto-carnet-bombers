@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useApp } from '../app/AppContext';
 import { nomFitxer } from '../app/formulari';
-import { codificaJpeg, desaFitxer, recordaHandleDesat } from '../captura/desar';
+import { codificaJpeg, desaFitxer, entornDesatActual, recordaHandleDesat } from '../captura/desar';
 import { Boto } from '../components/Boto';
 import { Miniatura } from '../components/Miniatura';
 import { t } from '../i18n';
@@ -26,7 +26,7 @@ export const P5Desar: React.FC = () => {
       .then((r) => {
         if (r.tipus === 'ok') {
           recordaHandleDesat(r.handle);
-          dispatch({ tipus: 'DESAT', desti: r.desti });
+          dispatch({ tipus: 'DESAT', desti: r.desti, nom: r.nom });
           // RF-09: només es manté la foto triada.
           alliberaFotos(foto.id);
           dispatch({ tipus: 'TRIA_FOTO', index: 0 });
@@ -47,7 +47,7 @@ export const P5Desar: React.FC = () => {
         <Miniatura etiqueta={t('p4.foto', { n: estat.fotoTriada + 1 })} src={foto?.url} />
       </div>
       <p className={styles.text}>{t('p5.nomFitxer', { fitxer: nom })}</p>
-      <p className={styles.nota}>{t('p5.ajuda')}</p>
+      <p className={styles.nota}>{t(entornDesatActual().showSaveFilePicker ? 'p5.ajuda' : 'p5.baixades')}</p>
       {!foto && (
         <p className={styles.error} role="alert">
           {t('p5.sensefoto')}

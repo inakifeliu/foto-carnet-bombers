@@ -119,7 +119,14 @@ describe('escriuJfif', () => {
     expect(cua).toEqual([...DADES, ...EOI]);
   });
 
-  it('és idempotent: tornar-la a aplicar dóna el mateix resultat', () => {
+  it('copia els marcadors sense longitud (TEM, RSTn) abans del SOS sense desquadrar els segments', () => {
+    const origen = jpeg(dqt(), [0xff, 0x01], [0xff, 0xd0], dqt(), sos());
+    const sortida = escriuJfif(origen, 300);
+    const esperat = [0xff, 0xd8, ...construeixApp0(300), ...dqt(), 0xff, 0x01, 0xff, 0xd0, ...dqt(), ...sos()];
+    expect(Array.from(sortida)).toEqual(esperat);
+  });
+
+  it('és idempotent: tornar-la a aplicar dona el mateix resultat', () => {
     const una = escriuJfif(jpeg(app0Jfif(0, 1, 1), dqt(), sos()), 300);
     expect(Array.from(escriuJfif(una, 300))).toEqual(Array.from(una));
   });

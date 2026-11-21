@@ -1,7 +1,7 @@
 /**
  * Desat de la foto (RF-10, RF-11). `showSaveFilePicker` s'obre DINS el clic, abans de qualsevol `await`
  * de codificació (per no perdre l'activació d'usuari); després es codifica i s'escriu amb `createWritable()`.
- * Si no existeix o dóna `SecurityError`, es fa una baixada (`<a download>`, carpeta Baixades).
+ * Si no existeix o dona `SecurityError`, es fa una baixada (`<a download>`, carpeta Baixades).
  */
 import { nomFitxer } from '../app/formulari';
 import type { ClauI18n } from '../i18n';
@@ -22,6 +22,8 @@ interface IEscriptor {
 
 /** Part del `FileSystemFileHandle` que fem servir (els tipus del DOM de TS no el porten tot). */
 export interface IHandleFitxer {
+  /** Nom real del fitxer desat (l'usuari pot haver-lo canviat al diàleg). */
+  name?: string;
   createWritable: () => Promise<IEscriptor>;
 }
 
@@ -38,7 +40,7 @@ export interface IEntornDesat {
 }
 
 export type ResultatDesat =
-  | { tipus: 'ok'; desti: DestiDesat; handle?: IHandleFitxer }
+  | { tipus: 'ok'; desti: DestiDesat; handle?: IHandleFitxer; nom?: string }
   | { tipus: 'cancelat' }
   | { tipus: 'error'; error: unknown };
 
@@ -117,7 +119,7 @@ export async function desaFitxer(
       escriptor = await handle.createWritable();
       await escriptor.write(blob);
       await escriptor.close();
-      return { tipus: 'ok', desti: 'imatges', handle };
+      return { tipus: 'ok', desti: 'imatges', handle, nom: typeof handle.name === 'string' ? handle.name : undefined };
     } catch (error) {
       try {
         await escriptor?.abort?.();

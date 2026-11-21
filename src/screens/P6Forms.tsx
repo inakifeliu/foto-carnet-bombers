@@ -36,7 +36,8 @@ export const P6Forms: React.FC = () => {
   const [modalObert, setModalObert] = React.useState<boolean>(true);
   const url = construeixUrlForms(config.forms.urlPlantilla, estat.matricula);
   const diagnostic = diagnosticaPlantilla(config.forms.urlPlantilla);
-  const fitxer = nomFitxer(estat.matricula);
+  const esperat = nomFitxer(estat.matricula);
+  const fitxer = estat.nomDesat || esperat;
   const carpeta = t(clauCarpeta(estat.desti));
 
   const obreFormulari = (): void => {
@@ -53,6 +54,11 @@ export const P6Forms: React.FC = () => {
       {senseConnexio && (
         <p className={styles.nota} role="status" data-offline="">
           {t('p6.senseConnexio', { carpeta })}
+        </p>
+      )}
+      {fitxer !== esperat && (
+        <p className={styles.nota} role="status" data-nom-diferent="">
+          <TextRic text={t('p6.nomDiferent', { fitxer })} />
         </p>
       )}
       {!url && (
