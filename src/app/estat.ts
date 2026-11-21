@@ -1,4 +1,6 @@
 /** Màquina d'estats de les pantalles (P0–P7 + NoCompatible). Reducer pur. */
+import type { DestiDesat } from '../captura/desar';
+
 export type Pantalla =
   | 'P0Benvinguda'
   | 'P1Instruccions'
@@ -25,8 +27,10 @@ export interface IEstat {
   pantalla: Pantalla;
   /** Matrícula validada a P2 (cadena buida fins llavors). */
   matricula: string;
-  /** Índex de la foto triada a P4 (dades simulades a la Fase 0). */
+  /** Índex de la foto triada a P4 (dins la llista de fotos capturades). */
   fotoTriada: number;
+  /** On s'ha desat la foto a P5: carpeta Imatges (selector de fitxers) o Baixades (alternativa). */
+  desti: DestiDesat;
   /** Resultat de la detecció de funcionalitats; si és false l'app queda a NoCompatible. */
   compatible: boolean;
 }
@@ -36,6 +40,7 @@ export type Accio =
   | { tipus: 'ENRERE' }
   | { tipus: 'DESA_MATRICULA'; matricula: string }
   | { tipus: 'TRIA_FOTO'; index: number }
+  | { tipus: 'DESAT'; desti: DestiDesat }
   | { tipus: 'REINICIA' };
 
 export function estatInicial(compatible: boolean): IEstat {
@@ -43,6 +48,7 @@ export function estatInicial(compatible: boolean): IEstat {
     pantalla: compatible ? 'P0Benvinguda' : 'NoCompatible',
     matricula: '',
     fotoTriada: 0,
+    desti: 'imatges',
     compatible
   };
 }
@@ -72,6 +78,8 @@ export function reductor(estat: IEstat, accio: Accio): IEstat {
       return { ...estat, matricula: accio.matricula };
     case 'TRIA_FOTO':
       return { ...estat, fotoTriada: accio.index };
+    case 'DESAT':
+      return { ...estat, desti: accio.desti };
     case 'REINICIA':
       return estatInicial(estat.compatible);
     default:

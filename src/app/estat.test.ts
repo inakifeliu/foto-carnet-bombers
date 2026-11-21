@@ -59,11 +59,19 @@ describe('reductor', () => {
     expect(e.fotoTriada).toBe(2);
   });
 
+  it('recorda on s’ha desat la foto i REINICIA ho esborra', () => {
+    expect(estatInicial(true).desti).toBe('imatges');
+    const e = aplica(estatInicial(true), { tipus: 'DESAT', desti: 'baixades' });
+    expect(e.desti).toBe('baixades');
+    expect(reductor(e, { tipus: 'REINICIA' }).desti).toBe('imatges');
+  });
+
   it('REINICIA torna a P0 i esborra les dades', () => {
     const e = aplica(
       { ...estatInicial(true), pantalla: 'P6Forms' },
       { tipus: 'DESA_MATRICULA', matricula: '12345' },
       { tipus: 'TRIA_FOTO', index: 1 },
+      { tipus: 'DESAT', desti: 'baixades' },
       { tipus: 'REINICIA' }
     );
     expect(e).toEqual(estatInicial(true));
