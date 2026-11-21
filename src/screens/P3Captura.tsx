@@ -1,23 +1,35 @@
 import * as React from 'react';
 import { useApp } from '../app/AppContext';
+import { useDebug } from '../app/useDebug';
 import { CLAU_ERROR_CAMERA } from '../captura/camera';
 import { creaFoto } from '../captura/fotos';
-import { retallaCentrat } from '../captura/retall';
+import { processaCaptura } from '../captura/processaCaptura';
 import { useCamera } from '../captura/useCamera';
 import { Boto } from '../components/Boto';
 import { Miniatura } from '../components/Miniatura';
+import { Modal } from '../components/Modal';
+import { OverlayDiagnostic } from '../components/OverlayDiagnostic';
+import { Semafor } from '../components/Semafor';
 import { SiluetaGuia } from '../components/SiluetaGuia';
-import { t } from '../i18n';
+import { t, type ClauI18n } from '../i18n';
 import styles from '../styles/brand.module.css';
+import { useAnalisi } from '../vision/useAnalisi';
+import { useModels } from '../vision/useModels';
+import { ORDRE_PRIORITAT } from '../vision/tipus';
 
 /**
- * Captura MANUAL (Fase 1): vídeo en mirall només a la visualització; la foto es fa a resolució completa sobre un
- * canvas SENSE mirall (RF-06), es retalla al centre a 35:45 (RF-07 simple) i se'n guarda la miniatura.
- * Els semàfors i la captura automàtica arriben a la Fase 2/3.
+ * Captura guiada (Fase 2): vídeo en mirall només a la visualització; els models de MediaPipe es carreguen en entrar
+ * (RF-02, RF-03), el bucle d'anàlisi (RF-04) alimenta els semàfors (RF-05) i el missatge principal. La foto es fa a
+ * resolució completa sobre un canvas SENSE mirall (RF-06), s'hi tornen a calcular els controls (puntuació) i es
+ * retalla amb RF-07 (retall centrat simple si no hi ha cara). La captura és MANUAL; si hi ha controls no verds
+ * es demana confirmació. La captura automàtica i el compte enrere són de la Fase 3.
  */
 export const P3Captura: React.FC = () => {
-  const { config, dispatch, fotos, afegeixFoto } = useApp();
+  const { config, funcionalitats, dispatch, fotos, afegeixFoto } = useApp();
   const camera = useCamera();
+  const debug = useDebug();
+  const models = useModels(config, funcionalitats.webGL2);
+  const [confirmant, setConfirmant] = React.useState<boolean>(false);
   const video = React.useRef<HTMLVideoElement>(null);
   const [revisio, setRevisio] = React.useState<boolean>(false);
   const [errorCaptura, setErrorCaptura] = React.useState<boolean>(false);
@@ -39,6 +51,16 @@ export const P3Captura: React.FC = () => {
   const alVideoListo = (): void => setVideoListo((video.current?.videoWidth ?? 0) > 0);
 
   const maxAssolit = fotos.length >= config.maxFotos;
+  const enRevisioAnalisi = revisio || maxAssolit;
+  const analisi = useAnalisi({
+    video,
+    analitzador: models.analitzador,
+    actiu: models.estat === 'llest' && camera.flux !== undefined && videoListo && !enRevisioAnalisi,
+    fluxId: camera.flux,
+    config,
+    delegat: models.delegat
+  });
+  const analisiDisponible = models.estat === 'llest' && !analisi.error;
 
   const fesFoto = async (): Promise<void> => {
     const el = video.current;
@@ -59,8 +81,10 @@ export const P3Captura: React.FC = () => {
         throw new Error('Sense context 2D');
       }
       ctx.drawImage(el, 0, 0, completa.width, completa.height);
-      retallada = retallaCentrat(completa, { ppp: config.sortida.ppp });
-      afegeixFoto(await creaFoto(retallada));
+      // RF-06/RF-07: controls recalculats sobre el fotograma complet, puntuació i retall intel·ligent.
+      const captura = processaCaptura(completa, models.analitzador, config);
+      retallada = captura.retallada;
+      afegeixFoto(await creaFoto(retallada, { puntuacio: captura.puntuacio, avisos: captura.avisos }));
       setRevisio(true);
     } catch {
       // Si `creaFoto` falla, ningú no s'endú el canvas retallat: s'allibera aquí.
@@ -75,6 +99,15 @@ export const P3Captura: React.FC = () => {
         completa.height = 0;
       }
       setOcupat(false);
+    }
+  };
+
+  /** Botó «Fer la foto ara»: amb controls no verds demana confirmació (spec P3). */
+  const alClicFeta = (): void => {
+    if (analisiDisponible && !analisi.avaluacio?.totOk) {
+      setConfirmant(true);
+    } else {
+      void fesFoto();
     }
   };
 
@@ -147,12 +180,38 @@ export const P3Captura: React.FC = () => {
             data-camera=""
           />
           {camera.carregant && !camera.error && <span className={styles.visorText}>{t('p3.carregant')}</span>}
+          {debug && <OverlayDiagnostic />}
           <SiluetaGuia />
         </div>
         <div className={styles.panell}>
           <div className={styles.guia} role="status" aria-live="polite" aria-atomic="true">
-            {revisio ? t('p3.capturada', { n: fotos.length }) : t('p3.guia')}
+            {revisio ? t('p3.capturada', { n: fotos.length }) : t(analisi.missatge ?? 'p3.guia')}
           </div>
+          {models.estat === 'carregant' && (
+            <p className={styles.guiaCarregant} data-carregant-models="">
+              {t('p3.carregantModels')}
+            </p>
+          )}
+          {(models.estat === 'error' || analisi.error) && (
+            <p className={styles.nota} data-error-models="">
+              {t(analisi.error ? 'p3.errorAnalisi' : 'p3.errorModels')}
+            </p>
+          )}
+          {analisiDisponible && !enRevisio && (
+            <ul
+              className={`${styles.semafors} ${styles.semaforsPanell}`}
+              aria-label={t('p3.semafors')}
+              data-semafors=""
+            >
+              {ORDRE_PRIORITAT.map((clau) => (
+                <Semafor
+                  key={clau}
+                  etiqueta={t(`p3.semafor.${clau}` as ClauI18n)}
+                  estat={analisi.avaluacio?.controls[clau].estat ?? 'cap'}
+                />
+              ))}
+            </ul>
+          )}
           <p className={styles.comptador}>
             {t('p3.comptador', {
               n: Math.min(fotos.length + (enRevisio ? 0 : 1), config.maxFotos),
@@ -193,11 +252,32 @@ export const P3Captura: React.FC = () => {
             </Boto>
           </>
         ) : (
-          <Boto refBoto={botoFeta} onClick={() => void fesFoto()} disabled={!potCapturar || ocupat}>
+          <Boto refBoto={botoFeta} onClick={alClicFeta} disabled={!potCapturar || ocupat}>
             {t('p3.feta')}
           </Boto>
         )}
       </div>
+
+      {confirmant && (
+        <Modal
+          titol={t('p3.confirmaTitol')}
+          onTancar={() => setConfirmant(false)}
+          textTancar={t('p3.confirmaNo')}
+          retornaFocusA={() => botoFeta.current ?? undefined}
+        >
+          <p>{t('p3.confirmaText')}</p>
+          <p>
+            <Boto
+              onClick={() => {
+                setConfirmant(false);
+                void fesFoto();
+              }}
+            >
+              {t('p3.confirmaSi')}
+            </Boto>
+          </p>
+        </Modal>
+      )}
     </section>
   );
 };

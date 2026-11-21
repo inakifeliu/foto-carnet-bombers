@@ -356,6 +356,44 @@
   background: var(--color-error);
 }
 
+.semaforCap {
+  background: #8a8a8a;
+}
+
+.semaforsPanell {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  column-gap: 24px;
+}
+
+.guiaCarregant {
+  font-size: 18px;
+  font-weight: 400;
+  margin: 12px 0 0;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Com el vídeo: la superposició (en coordenades sense mirall) es mostra també en mirall. */
+  transform: scaleX(-1);
+  pointer-events: none;
+}
+
+.avisosFoto {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 15px;
+}
+
+.recomanada {
+  font-weight: 700;
+  color: var(--color-ok);
+}
+
 /* --- P4/P5 fotos ----------------------------------------------------------- */
 .fotos {
   display: flex;

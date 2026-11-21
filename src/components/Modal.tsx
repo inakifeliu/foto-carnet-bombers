@@ -8,6 +8,8 @@ export interface IModalProps {
   onTancar: () => void;
   /** Element on retornar el focus en tancar; per defecte, el que tenia el focus en obrir-se (si encara existeix). */
   retornaFocusA?: () => HTMLElement | undefined;
+  /** Text del botó de tancar (per defecte «Tancar»). */
+  textTancar?: string;
   children?: React.ReactNode;
 }
 
@@ -15,7 +17,7 @@ const FOCALITZABLES =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /** Diàleg modal accessible: aria-modal, focus atrapat, Esc per tancar i retorn del focus. */
-export const Modal: React.FC<IModalProps> = ({ titol, onTancar, retornaFocusA, children }) => {
+export const Modal: React.FC<IModalProps> = ({ titol, onTancar, retornaFocusA, textTancar, children }) => {
   const dialeg = React.useRef<HTMLDivElement>(null);
   const retornaFocusRef = React.useRef(retornaFocusA);
   retornaFocusRef.current = retornaFocusA;
@@ -80,7 +82,7 @@ export const Modal: React.FC<IModalProps> = ({ titol, onTancar, retornaFocusA, c
         {children}
         <div className={styles.accions}>
           <Boto variant="secundari" onClick={onTancar}>
-            {t('nav.tancar')}
+            {textTancar ?? t('nav.tancar')}
           </Boto>
         </div>
       </div>
