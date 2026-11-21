@@ -10,3 +10,4 @@ sharepoint/solution/
 .heft/
 .DS_Store
 Thumbs.db
+jest-output/

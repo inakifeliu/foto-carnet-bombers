@@ -1,13 +1,14 @@
 # Foto Carnet Bombers de Barcelona
 
-Web part de SharePoint (SPFx) perquè els bombers del SPCPEIS es facin ells mateixos la foto de carnet amb el polo de l'uniforme: captura guiada amb webcam, retall automàtic a 35 × 45 mm, desat local com a `MATRICULA.jpg` i pujada via Microsoft Forms.
+Aplicació en **un únic fitxer HTML** perquè els bombers del SPCPEIS es facin ells mateixos la foto de carnet amb el polo de l'uniforme: captura guiada amb webcam, retall automàtic a 35 × 45 mm, desat local com a `MATRICULA.jpg` i pujada via Microsoft Forms. El fitxer es distribueix per SharePoint, OneDrive o correu i s'obre amb doble clic a Edge, sense instal·lar res.
 
-- Especificació completa: [docs/ESPECIFICACIO.md](docs/ESPECIFICACIO.md)
-- Estat: **pendent de la Fase 0** (prova de viabilitat a SharePoint + esquelet).
+- Especificació completa (v0.3): [docs/ESPECIFICACIO.md](docs/ESPECIFICACIO.md)
+- Estat: viabilitat a `file://` validada en un Surface (21/11/2026). **Pendent**: esquelet de la Fase 0 i repetir la prova en un equip de parc.
+- La branca `fase-0/viabilitat-esquelet` conté la versió anterior com a web part SPFx (v0.2). Es manté com a arxiu i se'n reaprofitarà codi.
 
 ## Recursos gràfics
 
-A `src/webparts/fotoCarnet/assets/brand/`:
+A `src/webparts/fotoCarnet/assets/brand/` (es mouran a `src/assets/brand/` a la Fase 0):
 
 - `escut_bombers_color.png` — escut de Bombers en color (manual, p. 5)
 - `segell_historic_bombers.png` — segell històric (manual, p. 5)
