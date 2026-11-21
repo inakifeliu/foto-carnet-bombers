@@ -1,0 +1,58 @@
+{
+  "matriculaRegex": "^[0-9]{4,6}$",
+  "maxFotos": 3,
+  "sortida": {
+    "ppp": 300,
+    "qualitatJpeg": 0.92,
+    "enquadrament": "visor",
+    "alcadaCapMm": 34,
+    "margeSuperiorMm": 4,
+    "penalitzacioForaFotograma": 20
+  },
+  "forms": {
+    "urlPlantilla": "https://forms.office.com/Pages/ResponsePage.aspx?id=wxyJ58naIUGy2v2Mz00IVaD4_eP2FkBBt0eaL5EhAfdUMjIxMkVPNExFUzBRWjYyR0VCMzNUUVRKNSQlQCN0PWcu&r033db01d8a4d47839be953ed0885e43d={MATRICULA}"
+  },
+  "captura": {
+    "segonsEstableAbansCompte": 1,
+    "compteEnrere": 3
+  },
+  "llindars": {
+    "centratMax": 0.08,
+    "alcadaCaraMin": 0.22,
+    "alcadaCaraMax": 0.3,
+    "yawMax": 8,
+    "pitchMax": 8,
+    "rollMax": 5,
+    "parpelleigMax": 0.4,
+    "bocaObertaMax": 0.15,
+    "fonsBlancMin": 0.85,
+    "fonsLumMin": 190,
+    "fonsSatMax": 0.15,
+    "llumCaraMin": 100,
+    "llumCaraMax": 210,
+    "ombraMax": 0.25,
+    "nitidesaMin": 100,
+    "poloHueMin": 200,
+    "poloHueMax": 250,
+    "poloSatMin": 0.25,
+    "poloValMin": 0.08,
+    "poloValMax": 0.65,
+    "poloProporcioMin": 0.5,
+    "margeAmbar": 0.25,
+    "torsVisibleMin": 0.85,
+    "yawSigne": 1,
+    "pitchSigne": 1
+  },
+  "pesosPuntuacio": {
+    "orientacio": 2,
+    "fons": 2,
+    "llum": 2,
+    "ombra": 1,
+    "nitidesa": 2,
+    "polo": 1,
+    "centrat": 1,
+    "distancia": 1,
+    "espatlles": 1,
+    "ullsBoca": 1
+  }
+}

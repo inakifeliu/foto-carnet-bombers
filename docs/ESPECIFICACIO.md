@@ -1,7 +1,8 @@
 # Especificació — Foto Carnet Bombers de Barcelona
 
-> Versió 0.2 · Esborrany · 20/11/2026
-> Canvis v0.2: allotjament a SharePoint com a web part SPFx (D3), destí final a SharePoint (D4), identitat gràfica definida (D7).
+> Versió 0.3 · Esborrany · 21/11/2026
+> Canvis v0.3: l'aplicació passa a ser **un únic fitxer HTML autònom** que es descarrega i s'obre amb doble clic (D3 revisada). Desapareixen el web part SPFx, el catàleg d'aplicacions i la dependència de l'IMI. Nou apartat de distribució (§10), recursos incrustats (RF-20), versió visible (RF-21) i context incorrecte (RF-19). La viabilitat tècnica a `file://` ja s'ha validat (§11, Fase 0).
+> Canvis v0.2: destí final a SharePoint (D4), identitat gràfica definida (D7).
 > Document de referència per implementar l'aplicació amb Claude Code, fase a fase.
 > Idioma de tota la interfície: **català**.
 
@@ -11,12 +12,13 @@
 
 Els bombers de Barcelona (SPCPEIS) han de lliurar una **foto tipus carnet amb el polo de l'uniforme**. L'objectiu és que cada bomber se la pugui fer **ell mateix** des d'un ordinador corporatiu amb webcam, amb una aplicació que:
 
-1. Li expliqui com s'ha de preparar.
-2. El guiï en temps real (posició, distància, llum, fons) a l'estil de les apps KYC.
-3. Li permeti fer fins a 3 fotos i triar la millor.
-4. Retalli automàticament la foto al format oficial **35 × 45 mm**.
-5. La desi a l'equip com a `MATRICULA.jpg` a la carpeta **Imatges**.
-6. Obri un **Microsoft Forms** (amb la matrícula ja escrita) on el bomber puja la foto, identificat amb el seu usuari de Microsoft 365.
+1. Es distribueix com **un sol fitxer HTML** (enllaç de SharePoint/OneDrive o correu) i s'obre amb doble clic a Edge, sense instal·lar res.
+2. Li expliqui com s'ha de preparar.
+3. El guiï en temps real (posició, distància, llum, fons) a l'estil de les apps KYC.
+4. Li permeti fer fins a 3 fotos i triar la millor.
+5. Retalli automàticament la foto al format oficial **35 × 45 mm**.
+6. La desi a l'equip com a `MATRICULA.jpg` a la carpeta **Imatges**.
+7. Obri un **Microsoft Forms** (amb la matrícula ja escrita) on el bomber puja la foto, identificat amb el seu usuari de Microsoft 365.
 
 Després, un flux de **Power Automate** reanomena el fitxer i el deixa a la carpeta destí.
 
@@ -25,16 +27,19 @@ Després, un flux de **Power Automate** reanomena el fitxer i el deixa a la carp
 ## 1. Abast
 
 ### Inclou
-- **Web part de SharePoint (SPFx)** inserit en una pàgina moderna d'un lloc de SharePoint de l'organització, **sense backend**.
-  - Motiu: SharePoint Online no mostra fitxers `.html` pujats a una biblioteca com a pàgines web (els descarrega), així que una web estàtica normal no hi pot viure. La via suportada és un web part SPFx.
+- **Un únic fitxer HTML autònom** (`foto-carnet-bombers-vX.Y.Z.html`) que conté tot el codi, els models, el WASM de MediaPipe i els logos. **Sense backend, sense servidor i sense instal·lació.**
+  - S'executa en local (`file://`) en obrir-lo amb doble clic.
+  - Motiu: SharePoint Online no executa fitxers `.html` (els descarrega) i desplegar un web part SPFx requereix permisos d'administrador que el Servei no té. Un fitxer local evita les dues coses i, a més, la CSP de SharePoint deixa de ser un risc.
 - Instruccions inicials, captura guiada amb validacions automàtiques, selecció de la millor foto, retall, desat local i obertura del Forms.
+- Procediment de distribució i actualització del fitxer (§10).
 - Especificació del Forms i del flux de Power Automate (configuració *no-code*, fora del repositori de codi).
 
 ### No inclou
+- Res especial a SharePoint: cap web part, cap pàgina, cap catàleg d'aplicacions. SharePoint/OneDrive només serveix per **guardar el fitxer perquè es descarregui** i com a biblioteca destí del Power Automate.
 - Validar si porta les galetes (categoria i nom). Només es demana a les **instruccions**.
 - Validar si la matrícula existeix o correspon a la persona (es pot fer després, a Power Automate).
 - Escriure al NAS (el destí és SharePoint).
-- Ús des de mòbils o des de fora de la xarxa corporativa.
+- Ús des de mòbils o tauletes.
 
 ---
 
@@ -46,8 +51,8 @@ Després, un flux de **Power Automate** reanomena el fitxer i el deixa a la carp
 | Equip | Ordinador corporatiu de l'Ajuntament (Windows) |
 | Navegador objectiu | **Microsoft Edge** (Chromium) actual. Chrome també compatible. Firefox: degradat (vegeu RF-17) |
 | Càmera | Webcam integrada o USB. Mínim 1280×720 recomanat |
-| Allotjament | Pàgina d'un **lloc de SharePoint Online** (HTTPS inclòs). L'usuari hi entra amb el seu compte de Microsoft 365 |
-| Instal·lació | Cap per a l'usuari. Només obrir la pàgina de SharePoint. El paquet SPFx l'ha de desplegar un administrador al catàleg d'aplicacions |
+| Execució | Local, `file://`, en obrir el fitxer HTML. Funciona **sense connexió a internet**; només el Forms (P6) necessita xarxa i sessió de Microsoft 365 |
+| Instal·lació | **Cap.** Descarregar el fitxer (o desar l'adjunt) i obrir-lo amb Edge. Cap permís d'administrador ni a l'equip ni a SharePoint |
 
 ---
 
@@ -61,8 +66,9 @@ P0 Benvinguda → P1 Instruccions → P2 Matrícula → P3 Captura guiada (×3 m
 ### P0 — Benvinguda
 - Capçalera amb identitat gràfica de Bombers de Barcelona.
 - Títol: "Foto de carnet amb uniforme".
-- Text breu: què farem, quant triga (~3 min), que la foto **no s'envia enlloc** fins que la pugi ell mateix al formulari.
+- Text breu: què farem, quant triga (~3 min), que la foto **no s'envia enlloc** fins que la pugi ell mateix al formulari, i que l'aplicació funciona tota dins l'ordinador.
 - Botó **"Començar"**.
+- Al peu: **versió i data** del fitxer (RF-21).
 
 ### P1 — Instruccions
 Llista il·lustrada (icona + text curt). Totes s'han de llegir; botó "Entesos, continuar" al final.
@@ -70,18 +76,19 @@ Llista il·lustrada (icona + text curt). Totes s'han de llegir; botó "Entesos, 
 1. **Fons blanc i llis** darrere teu (paret blanca, sense quadres ni portes).
 2. **Bona llum de cara**. Evita finestres o llums darrere teu.
 3. **Polo blau de l'uniforme**, net i ben posat.
-4. **Galeta de la categoria laboral** i **galeta amb el nom** cosides i visibles.
+4. **Galeta de la categoria laboral** i **galeta amb el nom i matrícula** visibles.
 5. **Sense gorra, casc ni ulleres de sol**. Si portes ulleres graduades, evita reflexos.
 6. **Cara descoberta**, cabells que no tapin els ulls.
 7. **Mirada a la càmera**, expressió neutra, boca tancada.
 8. **Espatlles rectes**, assegut/da a una distància d'un braç de la pantalla.
-9. Si pots, demana a un company que comprovi l'enquadrament.
+9. Si pots, demana a un company/a que comprovi l'enquadrament.
 
 ### P2 — Matrícula
 - Camp únic: **Matrícula**.
-- Validació amb expressió regular configurable (`config.matriculaRegex`). Missatge d'error clar.
+- Validació amb expressió regular configurable (`config.matriculaRegex`), aplicada com a **coincidència completa**, i el valor ha de ser un **nom de fitxer segur** (sense `/ \ : * ? " < > |`, `..`, ni punts o espais als extrems). Missatge d'error clar, també en prémer Enter.
 - Confirmació: "La teva matrícula és **12345**? Serà el nom de la foto."
 - Botó "Continuar". En prémer-lo, es demana permís de càmera.
+  - A `file://`, Edge pot tornar a demanar el permís cada vegada que s'obre el fitxer. És normal.
 
 ### P3 — Captura guiada
 - Vídeo de la webcam en mode **mirall** (només visualització; la foto final **no** es desa invertida).
@@ -116,6 +123,7 @@ Llista il·lustrada (icona + text curt). Totes s'han de llegir; botó "Entesos, 
   4. "Clica **Envia**."
 - Botó **"Obrir el formulari"** → `window.open(urlForms, '_blank', 'noopener')` (cal que sigui en resposta al clic, per evitar el bloqueig de finestres emergents).
 - Enllaç alternatiu visible "Si no s'ha obert, clica aquí".
+- Si l'equip no té connexió, avís: "Cal connexió a internet per enviar el formulari. La foto ja està desada a Imatges; pots enviar-la més tard."
 - Botó "Ja l'he enviat" → P7.
 
 ### P7 — Final
@@ -136,8 +144,9 @@ Llista il·lustrada (icona + text curt). Totes s'han de llegir; botó "Entesos, 
 - Si la resolució real és < 1280×720, avís no bloquejant.
 
 ### RF-02 Detecció de cara
-- **MediaPipe Face Landmarker** (`@mediapipe/tasks-vision`), mode VIDEO, 1 cara, amb *blendshapes* i matriu de transformació facial.
+- **MediaPipe Face Landmarker** (`@mediapipe/tasks-vision`), mode VIDEO, amb *blendshapes* i matriu de transformació facial.
 - Si hi ha 0 cares → "No et veiem la cara". Si n'hi ha > 1 → "Només hi ha de sortir una persona" (configurar `numFaces: 2` per poder-ho detectar).
+- Delegat **GPU** amb retrocés a **CPU** només si l'error és propi de la GPU.
 
 ### RF-03 Segmentació persona/fons
 - **MediaPipe Image Segmenter** (model *selfie segmenter* o *selfie multiclass*).
@@ -153,7 +162,7 @@ Tots els llindars són **configurables** a `config.json` i s'han de **calibrar**
 |---|---|---|---|---|
 | 5.1 | Una sola cara | Face Landmarker | exactament 1 | "Només hi ha de sortir una persona" |
 | 5.2 | Centrat horitzontal | centre de la cara vs centre del frame | desviació ≤ 8% de l'amplada | "Mou-te a l'esquerra / dreta" |
-| 5.3 | Distància | alçada cara (front–barbeta) / alçada frame | entre 0,30 i 0,45 | "Apropa't" / "Allunya't" |
+| 5.3 | Distància | alçada cara (front–barbeta) / alçada del rectangle del visor (amb enquadrament «cap», del fotograma) | entre 0,22 i 0,30 (enquadrament «visor»; amb «cap», 0,30–0,45) | "Apropa't" / "Allunya't" |
 | 5.4 | Orientació del cap | angles de la matriu facial | gir (yaw) ≤ 8°, cabotada (pitch) ≤ 8°, inclinació (roll) ≤ 5° | "Gira el cap…", "Aixeca / abaixa la barbeta", "Posa el cap recte" |
 | 5.5 | Ulls oberts i boca tancada | blendshapes `eyeBlinkLeft/Right`, `jawOpen` | parpelleig < 0,4; jawOpen < 0,15 | "Obre bé els ulls" / "Tanca la boca" |
 | 5.6 | Fons blanc | píxels de fons (màscara) en la zona que quedarà dins el retall | ≥ 85% de píxels amb luminància > 190/255 i saturació < 0,15 | "El fons no és prou blanc" |
@@ -173,13 +182,16 @@ Tots els llindars són **configurables** a `config.json` i s'han de **calibrar**
 ### RF-07 Retall al format oficial
 - Proporció **35:45** (amplada:alçada).
 - Mida de sortida per defecte: **413 × 531 px** (300 ppp). Configurable (`config.sortida.ppp`: 300 o 600 → 827 × 1063 px).
-- Enquadrament (referència normes DNI/OACI, configurable):
+- **Enquadrament** (`config.sortida.enquadrament`):
+  - **`"visor"` (per defecte)**: la foto final és **exactament el que es veu al visor de P3** (sense el mirall): el rectangle 35:45 més gran centrat al fotograma de la càmera (el mateix que mostra `object-fit: cover`, sigui quina sigui la proporció de la càmera), de manera que s'hi veuen cap, espatlles i part de l'uniforme. Decisió de l'usuari del 21/11/2026 després de provar-ho al Surface. El visor, la captura, els controls que depenen del retall (5.3, 5.6, 5.11) i el rectangle previst del mode diagnòstic fan servir la mateixa funció (`rectangleVisor`). El retall sempre és dins el fotograma: no hi ha avís «Massa a prop / a la vora» ni penalització. Silueta guia i llindars (5.3: 0,22–0,30; zona del tors de 5.10/5.11 més avall i més ampla) pensats per a aquest enquadrament; **a calibrar** amb fotos reals.
+  - **`"cap"`**: retall intel·ligent segons les normes DNI/OACI (opció configurable), descrit a continuació.
+- Enquadrament «cap» (referència normes DNI/OACI, configurable):
   - **Alçada del cap** (barbeta → part superior del cap): **34 mm** dels 45 (≈ 75% de l'alçada).
   - **Marge superior** (part superior del cap → límit superior): **4 mm**.
   - Cara **centrada horitzontalment**.
 - La **part superior del cap** s'estima amb la màscara de segmentació (primer píxel de persona per sobre del front a la columna central de la cara); si no és fiable, com a front (landmark 10) + 0,25 × l'alçada front–barbeta.
 - La **barbeta** és el landmark 152.
-- Si el retall necessita píxels fora del fotograma, la foto es marca amb avís "Massa a prop / a la vora" i rep una penalització a la puntuació.
+- (Només «cap».) Si el retall necessita píxels fora del fotograma, la foto es marca amb avís "Massa a prop / a la vora" i rep una penalització a la puntuació.
 - **No** es modifica el fons ni s'aplica cap retoc a la cara. Només retall i reescalat (interpolació d'alta qualitat).
 
 ### RF-08 Codificació JPEG
@@ -195,7 +207,7 @@ Tots els llindars són **configurables** a `config.json` i s'han de **calibrar**
 - `{matricula}.jpg`, exactament el text validat a P2, sense espais.
 
 ### RF-11 Desar a l'equip
-- Si `window.showSaveFilePicker` existeix:
+- Si `window.showSaveFilePicker` existeix (validat a Edge en `file://`, 21/11/2026):
   ```js
   showSaveFilePicker({
     suggestedName: `${matricula}.jpg`,
@@ -203,13 +215,15 @@ Tots els llindars són **configurables** a `config.json` i s'han de **calibrar**
     types: [{ description: 'Imatge JPEG', accept: { 'image/jpeg': ['.jpg'] } }],
   })
   ```
-  Escriure el blob amb `createWritable()`. **Guardar el `FileSystemFileHandle` en memòria** per a RF-15.
-- Si no existeix (Firefox), alternativa amb `<a download="{matricula}.jpg">` (anirà a Baixades). En aquest cas, el text de P6 ha de dir "carpeta **Baixades**" en lloc d'"Imatges".
+  - El diàleg s'obre **dins el clic** (abans de codificar), per no perdre l'activació d'usuari; després es codifica i s'escriu amb `createWritable()`.
+  - **Guardar el `FileSystemFileHandle` en memòria** per a RF-15.
+- Si no existeix o llança `SecurityError` (Firefox, polítiques), alternativa amb `<a download="{matricula}.jpg">` (anirà a Baixades). En aquest cas, el text de P6 ha de dir "carpeta **Baixades**" en lloc d'"Imatges".
 - `AbortError` (l'usuari cancel·la el diàleg) → es queda a P5 sense mostrar cap error.
 
 ### RF-12 URL del Forms pre-omplerta
 - `config.forms.urlPlantilla` conté l'URL obtinguda a Forms amb "Obtenir l'URL emplenada prèviament", amb el valor de mostra substituït pel marcador `{MATRICULA}`.
 - L'app substitueix el marcador per `encodeURIComponent(matricula)`.
+- La plantilla ha de ser `https:`; si no, P6 mostra un error de configuració en lloc de l'enllaç.
 
 ### RF-13 Obertura del Forms
 - Segons P6. Sempre en resposta directa a un clic.
@@ -224,19 +238,37 @@ Tots els llindars són **configurables** a `config.json` i s'han de **calibrar**
 ### RF-16 Neteja de memòria
 En finalitzar (P7), en "Començar de nou" i en tancar la pestanya (`pagehide`):
 - Aturar totes les pistes de la càmera (`track.stop()`).
-- `URL.revokeObjectURL()` de totes les miniatures.
+- `URL.revokeObjectURL()` de totes les miniatures i de les URL `blob:` dels recursos (RF-20) quan ja no calguin.
 - Buidar els canvas (amplada i alçada a 0) i eliminar les referències a blobs i ImageData.
 - Tancar els models de MediaPipe (`close()`).
 - Cap ús de `localStorage`, `sessionStorage`, IndexedDB ni Cache API per a imatges o matrícules.
 
 ### RF-17 Compatibilitat
-- Detecció de funcionalitats a l'inici: `getUserMedia`, WebAssembly, WebGL2 (si no hi és, MediaPipe en CPU).
-- Si falta alguna cosa imprescindible → pantalla "Aquest navegador no és compatible. Obre l'aplicació amb Microsoft Edge."
+- Detecció de funcionalitats a l'inici: `getUserMedia`, WebAssembly, `DecompressionStream`, WebGL2 i WebGL (1).
+- Si falta alguna cosa imprescindible → pantalla "Aquest navegador no és compatible. Obre el fitxer amb Microsoft Edge."
+- **WebGL**: sense WebGL2 però amb WebGL 1, MediaPipe va en CPU (nota a P0: anirà més lenta). `@mediapipe/tasks-vision` 1.2.3 necessita WebGL **fins i tot amb el delegat CPU**: si no hi ha ni WebGL ni WebGL2, **NO es carreguen els models**; P0 avisa que l'anàlisi automàtica no estarà disponible i P3 ho diu directament («L'anàlisi automàtica no està disponible en aquest equip…», sense «Preparant l'anàlisi…» ni semàfors). La **captura manual continua** (retall centrat, sense puntuació: P4 diu «Sense puntuació»). No és un error d'incompatibilitat: l'app continua utilitzable.
+- **Segmentador opcional**: el Face Landmarker i l'Image Segmenter es creen per separat. Si el segmentador no es pot crear, falla en escalfar-se o dona errors seguits en execució (3), es desactiva i el Face Landmarker continua. Sense màscara, els controls de fons blanc, polo blau i espatlles/tors passen a l'estat «No disponible» (semàfor gris amb aquest text): no compten per al «Perfecte!» ni per a la puntuació (els pesos dels altres es reponderen) i el retall RF-07 fa servir landmark 10 + 0,25 × alçada de la cara.
 
 ### RF-18 Mode diagnòstic (per calibrar)
-- Activat amb `?debug=1`.
+- Activat amb la combinació **Ctrl + Alt + D** o afegint `#debug` al final de l'adreça.
 - Mostra en directe els valors numèrics de tots els controls de RF-05, la màscara de segmentació, la zona del tors analitzada i el rectangle de retall previst.
 - Botó per descarregar un JSON amb els valors del moment (per ajustar llindars). **Mai** la imatge.
+
+### RF-19 Context d'obertura incorrecte
+- Si el navegador no executa scripts (p. ex. la vista prèvia de l'Outlook, de OneDrive o de SharePoint), el fitxer mostra un missatge estàtic (`<noscript>` i contingut HTML inicial visible fins que arrenca l'app): "Descarrega aquest fitxer a l'ordinador i obre'l amb Microsoft Edge."
+- Si l'app s'executa dins un `iframe` (vista prèvia d'algun servei), mostra el mateix missatge en lloc de demanar la càmera.
+
+### RF-20 Recursos incrustats
+- El fitxer HTML porta **dins** el loader i el binari WASM de MediaPipe, els models (`face_landmarker.task`, `selfie_segmenter.tflite`) i els logos.
+- Els binaris van codificats en base64 i, quan redueixi la mida, **comprimits amb gzip**; en temps d'execució es descomprimeixen amb `DecompressionStream`.
+- El loader i el WASM es passen a MediaPipe com a URL `blob:` (`wasmLoaderPath`, `wasmBinaryPath`); els models, com a `modelAssetBuffer`.
+- A `file://` no es pot fer `fetch` de fitxers locals ni importar mòduls d'altres fitxers: **tot** ha d'anar dins l'HTML.
+- Els logos, com a `data:` URI o SVG en línia, sense modificar-los (§6).
+
+### RF-21 Versió visible
+- Al peu de totes les pantalles: versió (`vX.Y.Z`) i data de compilació.
+- El nom del fitxer distribuït inclou la versió: `foto-carnet-bombers-vX.Y.Z.html`.
+- La versió també apareix al JSON del mode diagnòstic.
 
 ---
 
@@ -244,24 +276,27 @@ En finalitzar (P7), en "Començar de nou" i en tancar la pestanya (`pagehide`):
 
 ### Privacitat (RGPD)
 - **Cap imatge ni matrícula surt del navegador** cap a cap servidor. L'únic enviament és el que fa l'usuari al Forms.
-- Cap telemetria, analítica ni crida a CDN externes en temps d'execució.
+- Cap telemetria, analítica ni petició de xarxa en temps d'execució. L'app funciona sense connexió fins a P6.
 - Text informatiu a P0 sobre el tractament (finalitat, destí, conservació). **Redacció a validar amb el DPD** de l'Ajuntament.
 
-### Seguretat (context SharePoint)
-- L'HTTPS i les capçaleres HTTP les controla SharePoint, no nosaltres.
-- **Content Security Policy de SharePoint Online**: des de març de 2026 SharePoint bloqueja scripts de fonts no fiables i els scripts *inline*. Per tant:
-  - Cap script *inline*, cap `eval`, cap `innerHTML` amb `<script>`.
-  - Tots els scripts (inclòs el *loader* JS de MediaPipe) s'han de servir **des del mateix paquet SPFx** (biblioteca *ClientSideAssets* / CDN de Microsoft 365 del tenant), que SharePoint considera font fiable.
-  - **Risc a validar a la Fase 0**: MediaPipe compila **WebAssembly**. SharePoint no permet afegir `'wasm-unsafe-eval'` com a font fiable. Avui la compilació de WASM funciona perquè la CSP de SharePoint inclou `'unsafe-eval'`, però si Microsoft l'elimina en el futur, MediaPipe deixaria de funcionar. Cal tenir-ho present i documentar-ho al README.
-- **Permís de càmera**: validar a la Fase 0 que la pàgina de SharePoint permet `getUserMedia` dins el web part i `showSaveFilePicker` (el web part s'executa al DOM de la pàgina, no en un iframe).
-
-### Recursos locals
-- Els fitxers **WASM de MediaPipe** i els **models** (`.task` / `.tflite`) s'empaqueten com a recursos del paquet SPFx (`includeClientSideAssets: true`). Res de CDN externes: la CSP i el proxy corporatiu ho bloquejarien.
+### Seguretat
+- **Execució local (`file://`)**: no hi ha CSP de SharePoint ni de cap servidor. Tot i així, el codi propi no fa servir `eval`, `new Function` ni `innerHTML` amb contingut dinàmic.
+- **Telemetria de MediaPipe**: `@mediapipe/tasks-vision` inclou un registre que envia dades d'ús a `odml.pa.googleapis.com`. Es neutralitza en compilar i una **guarda de build** fa fallar la compilació si el fitxer final conté `googleapis` (excepte l'identificador protobuf `type.googleapis.com/`), `odml.`, `google-analytics` o qualsevol host extern fora d'una llista permesa.
+- **Integritat de les còpies**: com que el fitxer circula entre persones, pot arribar una còpia antiga o manipulada.
+  - La font oficial és una **única ubicació a SharePoint/OneDrive** (§10). Les comunicacions sempre enllacen allà.
+  - Cada versió es publica amb el seu **SHA-256** al costat.
+  - La versió visible (RF-21) permet comprovar quina té cada persona.
+- **Filtres de correu**: molts filtres corporatius (Defender for Office 365) bloquegen o posen en quarantena els adjunts `.html` amb scripts. Per això el canal recomanat és un **enllaç**, no un adjunt (§10, D13).
+- **Marca de la web (Mark of the Web)**: un fitxer baixat d'internet o del correu pot arribar marcat. Si Windows o Edge el bloquegen, cal fer *Propietats → Desbloqueja*. S'ha d'explicar a les instruccions de distribució.
 
 ### Rendiment
-- Càrrega inicial < 5 s dins SharePoint (models inclosos, < ~15 MB).
-- Vídeo fluid (≥ 24 fps de visualització). Anàlisi a ≥ 10 fps en un equip corporatiu estàndard.
+- Mida del fitxer: objectiu **< 12 MB** (a mesurar; sense comprimir eren ~24 MB, dominats pel WASM de 14,7 MB).
+- Obertura i càrrega del model < 5 s en un equip corporatiu estàndard.
+- Vídeo fluid (≥ 24 fps de visualització). Anàlisi a ≥ 10 fps.
 - Si l'anàlisi va lenta, reduir la resolució d'entrada als models (p. ex. 640 px d'amplada).
+- **Pressupost de l'anàlisi en directe** (tot és síncron al fil principal; constants a `src/vision/pressupost.ts`): els models s'**escalfen** en carregar-se (una detecció i una segmentació amb un canvas buit, mentre es veu «Preparant l'anàlisi…»; no compten a la mitjana). El segmentador només corre cada 3 anàlisis (~4 Hz a 12 fps) amb entrada de 256 px d'amplada i es reaprofita l'última màscara (amb les seves mides; coordenades normalitzades); a la captura sempre se segmenta, a 640 px. Si la mitjana mòbil supera 50 ms, l'anàlisi baixa a 8 fps i la segmentació s'espaia (cada 6); torna a la normalitat per sota de 35 ms. Si supera 150 ms de manera sostinguda (10 anàlisis seguides), l'anàlisi en directe s'atura amb un avís en català i la captura manual continua.
+- El mode diagnòstic mostra (i el JSON porta) el temps mitjà per pas: dibuix, Face Landmarker, segmentador i mètriques, el nivell del pressupost i l'estat de la segmentació.
+- Mesura de referència (21/11/2026, Surface, Edge 157, `file://`): model carregat en 320 ms amb GPU, detecció 23 ms de mitjana (p95 37 ms), càmera 1920×1080 a 30 fps. **Pendent** de repetir en un equip de parc.
 
 ### Accessibilitat i usabilitat
 - Contrast AA, mida de lletra gran als missatges de guia, navegació amb teclat, `aria-live` per als missatges de guia.
@@ -286,14 +321,15 @@ Regles:
 - **No fer servir cap logo amb el telèfon 080** (manual, apartat 9.2).
 - **No fer servir la versió en blanc i negre** de l'escut de Bombers.
 - No deformar, retallar, recolorir ni recrear cap logo. Respectar un espai de protecció al voltant (com a mínim el 10% de la mida del logo).
-- Els dos SVG de l'Ajuntament s'han de **descarregar manualment** de les URL de la taula i afegir al repositori (no es carreguen en temps d'execució).
+- Tots els logos van **incrustats** dins l'HTML (RF-20); no es carreguen en temps d'execució.
 
 ### Colors
 Referències Pantone del manual; els valors de pantalla són els mostrejats de l'escut del manual en PDF.
 
 ```css
 :root {
-  --bcn-vermell: #EB263C;   /* Pantone 485C (vermell Bombers) */
+  --bcn-vermell: #EB263C;   /* Pantone 485C (vermell Bombers), per a fons i vores */
+  --bcn-vermell-text: #C91F33; /* vermell per a text sobre blanc (5,6:1, AA) */
   --bcn-groc:    #FCB438;   /* Pantone 123C (groc Bombers) */
   --bcn-negre:   #000000;
   --bcn-blanc:   #FFFFFF;
@@ -307,7 +343,8 @@ Referències Pantone del manual; els valors de pantalla són els mostrejats de l
 }
 ```
 - El **vermell** és el color principal (botons primaris, capçalera, accents). El **groc** només com a accent puntual (mai text groc sobre blanc: no compleix contrast).
-- Text blanc sobre `--bcn-vermell` per als botons primaris (verificar contrast AA amb lletra ≥ 18 px en negreta).
+- Text blanc sobre `--bcn-vermell` per als botons primaris amb lletra **≥ 19 px en negreta** (4,31:1 només compleix AA com a text gran).
+- La signatura vermella de l'Ajuntament (`#FF2828`) es fa servir tal com és, sense recolorir.
 
 ### Tipografia
 - Tipografia corporativa: **ITC Franklin Gothic Std** (amb llicència; no es pot incloure com a font web sense llicència web).
@@ -315,7 +352,7 @@ Referències Pantone del manual; els valors de pantalla són els mostrejats de l
 
 ### Estil
 - Sobri i institucional. Fons blanc, molt d'espai, capçalera amb la signatura de l'Ajuntament a l'esquerra i l'escut de Bombers a la dreta.
-- Pensat per a pantalla d'escriptori (≥ 1280 px). Com que és un web part, ha d'ocupar la **secció d'amplada completa** de la pàgina de SharePoint i adaptar-se a l'amplada que tingui.
+- Pensat per a pantalla d'escriptori (≥ 1280 px), a pantalla completa del navegador, i adaptable a finestres més estretes.
 
 ---
 
@@ -323,53 +360,59 @@ Referències Pantone del manual; els valors de pantalla són els mostrejats de l
 
 | Capa | Tecnologia |
 |---|---|
-| Plataforma | **SharePoint Framework (SPFx)**, última versió estable, web part client-side. Toolchain oficial de SPFx (no Vite) |
+| Format de lliurament | **Un únic fitxer HTML** autònom (JS, CSS i recursos incrustats) |
+| Compilació | **esbuild** (empaquetat IIFE) + un script de Node que genera l'HTML final, incrusta els recursos, aplica el pegat de telemetria i passa la guarda |
 | Llenguatge | **TypeScript** estricte |
-| UI | **React** (la versió que suporti SPFx; components funcionals, *hooks*). Sense Fluent UI obligatori: estil propi de marca |
+| UI | **React** (components funcionals, *hooks*), empaquetat dins l'HTML. Estil propi de marca, sense llibreria de components |
 | Estat | `useReducer` + context (màquina d'estats de pantalles P0–P7). Sense llibreries externes d'estat |
-| Visió | `@mediapipe/tasks-vision` (Face Landmarker + Image Segmenter) |
+| Visió | `@mediapipe/tasks-vision` (Face Landmarker + Image Segmenter), versió fixada |
 | Processament d'imatge | Canvas 2D + funcions pròpies (luminància, HSV, Laplacià). **Sense OpenCV.js** (massa pes) |
 | Fitxers | File System Access API (`showSaveFilePicker`) amb alternativa `<a download>` |
-| Configuració | `config.json` per defecte dins el paquet + **panell de propietats del web part** (URL del Forms, regex de matrícula, ppp i un camp "Configuració avançada (JSON)" per als llindars). El propietari del lloc ho pot canviar sense recompilar |
-| Tests | **Jest** (el que porta SPFx) per a les funcions pures: retall, JFIF, càlculs de color i llum. Proves E2E manuals al *workbench* hostatjat de SharePoint |
-| Lint/format | ESLint (config SPFx) + Prettier |
-| Distribució | Paquet `.sppkg` al **catàleg d'aplicacions** (del tenant o del lloc) i web part afegit a una pàgina moderna del lloc |
+| Configuració | `config/config.json` dins el repositori, **validat i incrustat en compilar**. Per canviar la URL del Forms, la regex o els llindars cal editar-lo i tornar a compilar i distribuir (§10). La configuració s'ha de validar contra la forma i els tipus de `config.default.json` i mai pot fer fallar l'app |
+| Tests | **Jest** per a les funcions pures (retall, JFIF, color i llum, controls, configuració, màquina d'estats) i components clau. Proves E2E **manuals** amb el fitxer HTML final en equips reals |
+| Lint/format | ESLint + Prettier |
 
 ### Estructura de carpetes proposada
 ```
-foto-carnet-bombers/              # solució SPFx (yo @microsoft/sharepoint)
-├─ config/                        # package-solution.json (includeClientSideAssets: true)
-├─ src/webparts/fotoCarnet/
-│  ├─ FotoCarnetWebPart.ts        # entrada del web part + panell de propietats
+foto-carnet-bombers/
+├─ config/
+│  └─ config.json                 # configuració que s'incrusta en compilar
+├─ scripts/
+│  ├─ construeix.mjs              # esbuild + incrustació + guarda → dist/*.html
+│  ├─ mediapipe-sense-telemetria.mjs
+│  └─ verifica-html.mjs           # guarda: cap telemetria ni host extern
+├─ src/
+│  ├─ index.html                  # plantilla (amb <noscript> i missatge inicial, RF-19)
+│  ├─ main.tsx                    # arrencada
 │  ├─ app/                        # màquina d'estats, App.tsx
-│  ├─ screens/                    # P0Benvinguda … P7Final
-│  ├─ components/                 # Capcalera, Semafor, SiluetaGuia, Miniatura, Modal…
+│  ├─ screens/                    # P0Benvinguda … P7Final, NoCompatible
+│  ├─ components/                 # Capcalera, Peu, Semafor, SiluetaGuia, Miniatura, Modal…
 │  ├─ vision/                     # carregar models, bucle d'anàlisi, controls RF-05
 │  ├─ image/                      # retall RF-07, jpeg+JFIF RF-08, mètriques
 │  ├─ fs/                         # desar RF-11, esborrar RF-15
+│  ├─ recursos/                   # descompressió i URL blob dels recursos incrustats (RF-20)
 │  ├─ i18n/ca.json
-│  ├─ config/config.default.json
-│  ├─ styles/brand.module.scss
+│  ├─ config/                     # config.default.json + validació
+│  ├─ styles/
 │  └─ assets/
 │     ├─ brand/                   # escuts i signatures (§6)
 │     ├─ models/                  # face_landmarker.task, selfie_segmenter.tflite
-│     └─ wasm/                    # fitxers WASM i loader de MediaPipe
-├─ tests/
-└─ README.md                      # build, desplegament, calibratge i riscos CSP
+│     └─ wasm/                    # loader i binari WASM de MediaPipe (còpia verificada per SHA-256)
+├─ dist/                          # foto-carnet-bombers-vX.Y.Z.html + .sha256 (no es versiona)
+└─ README.md                      # build, distribució, configuració, calibratge
 ```
-- Els fitxers de `models/` i `wasm/` s'han de copiar tal qual al paquet (configurar la còpia d'actius a la toolchain de SPFx) i resoldre la seva URL en temps d'execució a partir de la ubicació dels recursos del web part.
 
 ### `config.json` (exemple)
 ```json
 {
   "matriculaRegex": "^[0-9]{4,6}$",
   "maxFotos": 3,
-  "sortida": { "ppp": 300, "qualitatJpeg": 0.92,
+  "sortida": { "ppp": 300, "qualitatJpeg": 0.92, "enquadrament": "visor",
                "alcadaCapMm": 34, "margeSuperiorMm": 4 },
   "forms": { "urlPlantilla": "https://forms.office.com/Pages/ResponsePage.aspx?id=XXXX&rYYYY={MATRICULA}" },
   "captura": { "segonsEstableAbansCompte": 1, "compteEnrere": 3 },
   "llindars": {
-    "centratMax": 0.08, "alcadaCaraMin": 0.30, "alcadaCaraMax": 0.45,
+    "centratMax": 0.08, "alcadaCaraMin": 0.22, "alcadaCaraMax": 0.30,
     "yawMax": 8, "pitchMax": 8, "rollMax": 5,
     "parpelleigMax": 0.4, "bocaObertaMax": 0.15,
     "fonsBlancMin": 0.85, "fonsLumMin": 190, "fonsSatMax": 0.15,
@@ -413,24 +456,37 @@ foto-carnet-bombers/              # solució SPFx (yo @microsoft/sharepoint)
 
 **Destí (decidit, D4)**: una **biblioteca de documents de SharePoint** del lloc del Servei, per exemple `Fotos carnet`.
 - Permisos: només lectura/edició per al personal gestor. Els bombers **no** hi tenen accés (pugen via Forms, i el flux s'executa amb el compte del propietari del flux).
-- Recomanat: fer servir el mateix lloc de SharePoint on hi ha la pàgina de l'aplicació, i que el Forms sigui un formulari del grup de Microsoft 365 associat a aquest lloc.
+- Recomanat: que el Forms sigui un formulari del grup de Microsoft 365 associat al lloc del Servei.
 
 ---
 
-## 10. Desplegament
+## 10. Distribució i actualització
 
-1. Build de producció amb la toolchain de SPFx → paquet `foto-carnet-bombers.sppkg` (amb `includeClientSideAssets: true`, perquè els models, el WASM i els logos viatgin dins el paquet).
-2. Pujar el `.sppkg` al **catàleg d'aplicacions**:
-   - del **tenant** (ho ha de fer un administrador de SharePoint, probablement l'IMI), o
-   - d'un **catàleg a nivell de lloc** (també el crea un administrador, però després el propietari del lloc pot gestionar les versions sense dependre d'ell).
-3. Al lloc de SharePoint del Servei: afegir l'aplicació al lloc, crear una **pàgina moderna** (p. ex. `Foto-carnet.aspx`) amb una secció d'amplada completa i afegir-hi el web part.
-4. Configurar el web part des del panell de propietats (URL del Forms, etc.) i publicar la pàgina.
-5. Permisos de la pàgina: lectura per a tot el personal que s'hagi de fer la foto.
-6. Actualitzacions: pujar un `.sppkg` nou amb la versió incrementada. Els usuaris no han de fer res.
+No cal cap permís d'administrador: n'hi ha prou amb poder pujar fitxers a una biblioteca de SharePoint o a OneDrive.
 
-**Desenvolupament**: provar al *workbench* hostatjat del lloc de proves (`/_layouts/15/workbench.aspx`) amb `gulp serve` / `heft start` (segons la versió de SPFx).
+### Compilació
+1. Editar `config/config.json` si cal (URL del Forms, llindars…) i incrementar la versió a `package.json`.
+2. `npm run build` → `dist/foto-carnet-bombers-vX.Y.Z.html` i `dist/foto-carnet-bombers-vX.Y.Z.html.sha256`. La compilació falla si la guarda detecta telemetria o hosts externs.
+3. Prova manual del fitxer generat (doble clic a Edge, flux complet).
 
-**Atenció**: el que no funcioni per la CSP de SharePoint (§5) **no es veurà en local**, només dins SharePoint. Per això la Fase 0 es prova directament en un lloc de SharePoint real.
+### Publicació (font oficial única)
+1. Pujar el fitxer a una **carpeta de SharePoint o OneDrive** amb permís de **lectura** per a tot el personal que s'hagi de fer la foto (p. ex. `Foto carnet/`), junt amb un document breu d'instruccions i el SHA-256.
+2. Treure'n (o moure a una carpeta `Antigues/`) les versions anteriors.
+3. Comunicar l'**enllaç** per correu o Teams. Recomanat: enllaç, **no** adjunt (filtres de correu, mida, còpies antigues).
+
+### Ús per part del bomber
+1. Obrir l'enllaç → **Descarregar** el fitxer.
+2. Obrir-lo amb doble clic (o clic dret → *Obre amb* → **Microsoft Edge** si el navegador per defecte no és Edge o Chrome).
+3. Si Windows avisa que el fitxer ve d'internet: clic dret → *Propietats* → marcar **Desbloqueja** → *D'acord*.
+
+### Actualitzacions
+- Una versió nova és un fitxer nou amb la versió al nom. Es substitueix a la font oficial i es comunica.
+- Qui tingui una còpia antiga pot comprovar la versió al peu de la pàgina.
+
+### Proves de distribució (abans del pilot)
+- Descarregar des de SharePoint i des de OneDrive i obrir-lo en un equip de parc.
+- Enviar-lo com a adjunt a un mateix per veure si el filtre corporatiu el bloqueja.
+- Comprovar què passa si s'obre la vista prèvia (Outlook, OneDrive, SharePoint): ha de sortir el missatge de RF-19.
 
 ---
 
@@ -438,22 +494,22 @@ foto-carnet-bombers/              # solució SPFx (yo @microsoft/sharepoint)
 
 Cada fase s'ha de tancar (funcionant i provada) abans de començar la següent.
 
-### Fase 0 — Prova de viabilitat a SharePoint + esquelet
-**Primer, una prova mínima (spike)** desplegada en un lloc de SharePoint real, no al workbench local:
-- Web part que obre la webcam (`getUserMedia`) i la mostra.
-- Carrega MediaPipe Face Landmarker **des dels recursos del paquet** i pinta els punts de la cara.
-- Botó que desa un JPEG de prova amb `showSaveFilePicker` a Imatges.
-- Revisar la consola: **cap violació de CSP**.
+### Fase 0 — Esquelet de l'HTML autònom
+**Viabilitat (feta, 21/11/2026)**: una pàgina HTML autònoma de prova, oberta amb doble clic (`file://`) a Edge en un Surface, ha funcionat sense errors: càmera 1920×1080 a 30 fps, MediaPipe Face Landmarker amb GPU (càrrega 320 ms, detecció 23 ms), `showSaveFilePicker` obert a Imatges, cap petició de xarxa. **Pendent**: repetir-la en un equip corporatiu de parc.
 
-Si alguna de les tres coses falla, **aturar-se i informar** abans de continuar (cal replantejar l'allotjament).
+Esquelet:
+- Projecte TypeScript estricte + React + esbuild, ESLint/Prettier, Jest.
+- `npm run build` que genera **un sol fitxer** `dist/foto-carnet-bombers-vX.Y.Z.html` amb:
+  - recursos incrustats i comprimits (RF-20), pegat de telemetria i guarda;
+  - el SHA-256 al costat;
+  - versió i data al peu (RF-21);
+  - missatge `<noscript>` i detecció d'`iframe` (RF-19).
+- Màquina d'estats amb les pantalles P0–P7 i navegació amb dades simulades.
+- `config.json` validat i incrustat, `ca.json` carregat a l'inici.
+- Capçalera i peu amb els logos de §6 i variables de color.
+- Es pot reaprofitar el codi de la branca `fase-0/viabilitat-esquelet` (màquina d'estats, pantalles, configuració, i18n, pegat de telemetria, guarda, prova local), traient-ne tot el que és específic de SPFx.
 
-Després, l'esquelet:
-- Solució SPFx amb React + TS estricte, ESLint/Prettier, Jest.
-- Màquina d'estats amb les pantalles P0–P7 buides i navegació.
-- `config.default.json`, panell de propietats i `ca.json` carregats a l'inici.
-- Capçalera amb els logos de §6 i variables de color.
-
-**Fet quan**: la prova de viabilitat funciona dins SharePoint i es pot navegar per totes les pantalles amb dades simulades.
+**Fet quan**: el fitxer generat s'obre amb doble clic a Edge, es pot navegar per totes les pantalles amb dades simulades, la guarda passa i se n'ha mesurat la mida.
 
 ### Fase 1 — Captura bàsica i sortida
 - P1 instruccions, P2 matrícula amb validació.
@@ -464,8 +520,12 @@ Després, l'esquelet:
 
 **Fet quan**: es pot fer una foto, desar-la com a `12345.jpg` a Imatges i, oberta a Windows, té 413×531 px i 300 ppp.
 
+**Estat (branca `html-autonom/fase-1`)**: implementat i provat amb tests i amb Edge headless (càmera simulada; el diàleg de desat se simula amb un mock pel mateix camí de codi). **Pendent**: la prova manual al Surface (càmera real, diàleg de Windows real i propietats del fitxer desat: 413×531 px i 300 ppp). A P3 només hi ha captura manual (sense semàfors ni captura automàtica, Fase 2/3) i la puntuació de P4 és provisional (simulada).
+
 ### Fase 2 — Visió i guiatge en temps real
-- Càrrega local de MediaPipe (RF-02, RF-03), bucle d'anàlisi (RF-04).
+
+**Estat (branca `html-autonom/fase-2`)**: implementat i provat amb tests unitaris (378) i Edge headless amb càmera simulada sense cara. **Pendent**: prova manual amb una cara real al Surface i calibratge dels llindars (vegeu README, «Visió i guiatge»).
+- Càrrega de MediaPipe des dels recursos incrustats (RF-02, RF-03, RF-20), bucle d'anàlisi (RF-04).
 - Tots els controls de RF-05, semàfors, missatge prioritari i silueta guia.
 - Retall intel·ligent RF-07.
 - Mode diagnòstic RF-18.
@@ -480,15 +540,18 @@ Després, l'esquelet:
 
 **Fet quan**: el flux complet funciona de punta a punta amb un Forms de proves.
 
+> Estat (21/11/2026): implementada (captura automàtica, 3 fotos, P4, P5/P6/P7 i RF-15, amb RF-09 aplicat en triar a P4); pendent de la prova manual al Surface amb cara real i amb el Forms real.
+
 ### Fase 4 — Acabats
 - Repàs de la identitat gràfica (§6) a totes les pantalles.
 - Accessibilitat, textos revisats, il·lustracions de les instruccions.
-- Guió de proves manuals dins SharePoint (diferents equips, webcams i llums).
-- README complet (build, desplegament al catàleg, configuració del web part, calibratge, risc CSP/WASM).
+- Guió de proves manuals amb el fitxer final (diferents equips de parc, webcams i llums) i proves de distribució (§10).
+- README complet (build, configuració, distribució, calibratge) i document d'instruccions per als bombers.
 
 ### Fase 5 — Calibratge i pilot (sense codi nou)
-- Sessió de calibratge amb `?debug=1` (afegit a l'URL de la pàgina de SharePoint) en 2-3 parcs diferents (llums diferents) i ajust de la configuració des del panell de propietats.
+- Sessió de calibratge amb el mode diagnòstic (Ctrl + Alt + D) en 2-3 parcs diferents (llums diferents). Ajust de `config.json`, nova compilació i nova versió.
 - Crear el Forms (§8) i el flux de Power Automate (§9).
+- Publicar el fitxer a la font oficial (§10).
 - Pilot amb 10-20 bombers i recollida de comentaris.
 
 ---
@@ -498,9 +561,11 @@ Després, l'esquelet:
 ### Preses
 | # | Decisió |
 |---|---|
-| D3 | Allotjament en un **lloc de SharePoint**, com a **web part SPFx** en una pàgina moderna |
+| D3 | *(revisada a v0.3)* L'aplicació és **un únic fitxer HTML autònom**, executat en local amb Edge. Res especial a SharePoint. Substitueix el web part SPFx de la v0.2 |
 | D4 | Destí final: **biblioteca de SharePoint** (via Forms + Power Automate) |
 | D7 | Identitat gràfica: escut de Bombers en color + segell històric (manual p. 5), signatura de l'Ajuntament (negre i vermell), sense logos 080 (§6) |
+| D17 | **Enquadrament de la foto final** (21/11/2026, després de provar-ho al Surface): per defecte és exactament el que es veu al visor de P3 (rectangle 35:45 centrat, amb cap, espatlles i part del polo), no el retall RF-07 amb el cap a 34/45 mm. El retall RF-07 es manté com a opció (`sortida.enquadrament: "cap"`). Llindar 5.3 i silueta guia adaptats; a calibrar |
+| D16 | Configuració fixada en compilar (`config/config.json`); canviar-la implica una versió nova |
 
 ### Pendents
 | # | Pregunta | Valor provisional |
@@ -510,24 +575,33 @@ Després, l'esquelet:
 | D5 | Resolució de sortida: 300 o 600 ppp? Requisits del destinatari (impressió de carnets, RRHH) | 300 ppp |
 | D6 | Webcams reals dels parcs (resolució mínima) | ≥ 720p |
 | D8 | Text RGPD de P0 | Pendent del DPD |
-| D11 | Qui desplega el `.sppkg`: catàleg del tenant (IMI) o catàleg del lloc | A coordinar amb l'IMI |
-| D12 | Ara que l'app viu dins SharePoint, es podria **pujar la foto directament a una biblioteca** des del web part (sense desar a l'equip ni Forms). Ho volem per a una v2? | No a la v1 |
 | D9 | Es permeten ulleres graduades? | Sí, sense reflexos |
 | D10 | Validació matrícula ↔ usuari a Power Automate (necessita una llista) | No, a la primera versió |
+| D13 | Canal de distribució: enllaç (SharePoint/OneDrive) o adjunt de correu? | Enllaç. L'adjunt només si les proves de §10 confirmen que el filtre no el bloqueja i la mida ho permet |
+| D14 | On es publica la font oficial i qui en manté les versions | Pendent |
+| D15 | Cal avisar dins l'app si la versió és antiga (p. ex. data de caducitat)? | No a la v1; només versió visible |
+
+### Obsoletes (v0.2)
+| # | Motiu |
+|---|---|
+| D11 | Qui desplega el `.sppkg`: ja no hi ha paquet SPFx |
+| D12 | Pujar la foto directament a una biblioteca des del web part: sense context de SharePoint no és possible sense autenticació pròpia |
 
 ---
 
 ## 13. Criteris d'acceptació globals
 
-- [ ] Un bomber sense ajuda pot completar el procés en < 5 min a partir de les instruccions.
+- [ ] Un bomber sense ajuda pot completar el procés en < 5 min a partir de les instruccions, des de l'enllaç fins a l'enviament del Forms.
+- [ ] L'aplicació és **un sol fitxer HTML** que funciona amb doble clic a l'Edge dels equips corporatius, sense instal·lar res i sense permisos d'administrador.
 - [ ] El fitxer desat es diu exactament `{matricula}.jpg`, fa 35:45, té la resolució configurada i densitat JFIF correcta.
-- [ ] El cap ocupa ~75% de l'alçada (±5%) i està centrat.
-- [ ] Cap petició de xarxa conté la imatge ni la matrícula (comprovat a les eines de desenvolupador).
+- [ ] La foto és el que es veu al visor de P3 (enquadrament «visor», per defecte); amb enquadrament «cap», el cap ocupa ~75% de l'alçada (±5%) i està centrat.
+- [ ] L'aplicació no fa **cap petició de xarxa** fins que l'usuari obre el Forms (comprovat a les eines de desenvolupador), i la guarda de build passa.
 - [ ] No queda cap dada a l'emmagatzematge del navegador després del procés.
 - [ ] La càmera s'apaga en acabar o en tancar la pestanya.
 - [ ] El Forms s'obre amb la matrícula pre-omplerta.
 - [ ] El flux de Power Automate deixa `{matricula}.jpg` a la carpeta destí i esborra l'original.
-- [ ] Funciona a l'Edge dels equips corporatius dins la pàgina de SharePoint, sense cap violació de CSP a la consola.
+- [ ] La versió és visible a l'app i al nom del fitxer, i el SHA-256 es publica amb cada versió.
+- [ ] Si s'obre en una vista prèvia sense scripts, es mostra el missatge per descarregar-lo.
 - [ ] Es fan servir només els logos autoritzats (§6) i cap amb el 080.
 
 ---
@@ -536,8 +610,9 @@ Després, l'esquelet:
 
 - Treballa **una fase cada vegada** (§11). En acabar una fase, resumeix què s'ha fet, com provar-ho, i espera confirmació abans de seguir.
 - Tots els textos visibles en **català**, des de `ca.json`.
-- **No afegeixis cap dependència que faci peticions a internet** en temps d'execució.
-- És un **web part SPFx**: respecta la CSP de SharePoint (cap script inline, cap `eval`, tot servit des del paquet).
+- El lliurable és **un únic fitxer HTML**: tot el codi i tots els recursos incrustats (RF-20). Res de CDN, res de fitxers externs, res de servidor.
+- **No afegeixis cap dependència que faci peticions a internet** en temps d'execució. La guarda de build ho ha de detectar.
+- Ha de funcionar a `file://` a Edge: sense `fetch` de fitxers locals ni mòduls ES externs.
 - Codi en TypeScript estricte; funcions de càlcul d'imatge **pures i testejades**.
 - Fes servir **només** els fitxers de `assets/brand/` (§6). No recreïs ni modifiquis cap logo.
 - Els llindars van sempre a la configuració, mai al codi.
