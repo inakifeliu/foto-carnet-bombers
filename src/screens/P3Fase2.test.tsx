@@ -43,6 +43,9 @@ const Salta: React.FC<{ endavant: number }> = ({ endavant }) => {
   return null;
 };
 
+/** Configuració que fa servir `monta` (es restableix a cada prova). */
+let configMonta = CONFIG_PER_DEFECTE;
+
 function monta(
   endavant: number,
   funcionalitats: typeof FUNCIONALITATS = FUNCIONALITATS
@@ -53,7 +56,7 @@ function monta(
   (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
   void act(() => {
     root.render(
-      <ProveidorApp config={CONFIG_PER_DEFECTE} funcionalitats={funcionalitats}>
+      <ProveidorApp config={configMonta} funcionalitats={funcionalitats}>
         <Salta endavant={endavant} />
         <Contingut />
       </ProveidorApp>
@@ -172,6 +175,7 @@ const estats = (div: HTMLElement): string[] =>
   Array.from(div.querySelectorAll('[data-semafors] li')).map((li) => li.querySelector('strong')?.textContent ?? '');
 
 beforeEach(() => {
+  configMonta = CONFIG_PER_DEFECTE;
   jest.useFakeTimers();
   espiaUrl();
   simulaCanvas();
@@ -306,6 +310,8 @@ describe('P3 Fase 2: bucle d’anàlisi i semàfors', () => {
   });
 
   it('un valor puntual dolent (parpelleig d’un fotograma) no canvia el missatge', async () => {
+    // Sense captura automàtica enmig (l'estabilitat requerida és molt llarga).
+    configMonta = { ...CONFIG_PER_DEFECTE, captura: { ...CONFIG_PER_DEFECTE.captura, segonsEstableAbansCompte: 10 } };
     const { div, root, an } = await montaP3(mesuresBones());
     await avanca(1500);
     expect(guia(div)).toBe(t('p3.msg.totOk'));
@@ -591,5 +597,174 @@ describe('useModels: neteja sense acumular tasques', () => {
     }
     // Quatre visites més (sense neteja entremig) no han d'haver afegit cap tasca més.
     expect(registre.pendents).toBe(unaVisita);
+  });
+});
+
+describe('P3 Fase 3: captura automàtica', () => {
+  /** Avança el temps en passos de 100 ms perquè React renderitzi (i reprogrami els efectes) entre un pas i el següent. */
+  const passos = async (ms: number): Promise<void> => {
+    for (let t0 = 0; t0 < ms; t0 += 100) {
+      await avanca(100);
+    }
+  };
+  const esperaCompte = async (div: HTMLElement, valor: string): Promise<void> => {
+    for (let i = 0; i < 80 && div.querySelector('[data-compte-enrere]')?.textContent !== valor; i++) {
+      await avanca(100);
+    }
+  };
+  const comptador = (div: HTMLElement): string => div.querySelector('[data-compte-enrere]')?.textContent ?? '';
+  const fotosFetes = (div: HTMLElement): number => div.querySelectorAll('main ul img').length;
+
+  it('amb tot verd durant 1 s comença el compte 3-2-1 i fa la foto', async () => {
+    const { div, root } = await montaP3(mesuresBones());
+    await passos(900);
+    expect(comptador(div)).toBe('');
+    await esperaCompte(div, '3');
+    expect(guia(div)).toBe(t('p3.compteAuto', { n: 3 }));
+    await passos(1000);
+    expect(comptador(div)).toBe('2');
+    await passos(1000);
+    expect(comptador(div)).toBe('1');
+    expect(fotosFetes(div)).toBe(0);
+    await passos(1000);
+    await act(async () => {});
+    expect(comptador(div)).toBe('');
+    expect(div.textContent).toContain(t('p3.capturada', { n: 1 }));
+    await act(async () => root.unmount());
+  });
+
+  it('l’anunci aria-live durant el compte és constant (cap spam per segon)', async () => {
+    const { div, root } = await montaP3(mesuresBones());
+    await esperaCompte(div, '3');
+    expect(comptador(div)).not.toBe('');
+    const regio = div.querySelector('[role="status"][aria-live]') as HTMLElement;
+    const mutacions: MutationRecord[] = [];
+    const obs = new MutationObserver((r) => mutacions.push(...r));
+    obs.observe(regio, { childList: true, characterData: true, subtree: true });
+    await passos(1900);
+    obs.takeRecords().forEach((r) => mutacions.push(r));
+    obs.disconnect();
+    expect(mutacions).toHaveLength(0);
+    await act(async () => root.unmount());
+  });
+
+  it('si un control passa a vermell durant el compte, es cancel·la i torna a esperar', async () => {
+    const { div, root, an } = await montaP3(mesuresBones());
+    await passos(3000);
+    expect(comptador(div)).not.toBe('');
+    an.posa({ ...mesuresBones(), llum: 5 });
+    await passos(1500);
+    expect(comptador(div)).toBe('');
+    expect(fotosFetes(div)).toBe(0);
+    await passos(6000);
+    expect(fotosFetes(div)).toBe(0);
+    an.posa(mesuresBones());
+    await passos(2800);
+    expect(comptador(div)).not.toBe('');
+    await act(async () => root.unmount());
+  });
+
+  it('si es perd la cara durant el compte, es cancel·la', async () => {
+    const { div, root, an } = await montaP3(mesuresBones());
+    await passos(3000);
+    expect(comptador(div)).not.toBe('');
+    an.posa({ nCares: 0 });
+    await passos(1500);
+    expect(comptador(div)).toBe('');
+    await act(async () => root.unmount());
+  });
+
+  it('sense cara no s’inicia mai', async () => {
+    const { div, root } = await montaP3({ nCares: 0 });
+    await passos(8000);
+    expect(comptador(div)).toBe('');
+    expect(fotosFetes(div)).toBe(0);
+    await act(async () => root.unmount());
+  });
+
+  it('sense anàlisi (error de models) no hi ha captura automàtica', async () => {
+    mockCarregaModels.mockRejectedValue(new Error('Model corrupte'));
+    posaCamera();
+    const { div, root } = monta(3);
+    await act(async () => {});
+    await act(async () => {});
+    await donaFotograma(div.querySelector('video') as HTMLVideoElement);
+    await passos(10000);
+    expect(comptador(div)).toBe('');
+    expect(div.textContent).not.toContain(t('p3.capturada', { n: 1 }));
+    await act(async () => root.unmount());
+  });
+
+  it('sense WebGL no hi ha captura automàtica', async () => {
+    posaCamera();
+    const { div, root } = monta(3, { ...FUNCIONALITATS, webGL2: false, webGL: false });
+    await act(async () => {});
+    await donaFotograma(div.querySelector('video') as HTMLVideoElement);
+    await passos(10000);
+    expect(comptador(div)).toBe('');
+    expect(div.textContent).not.toContain(t('p3.capturada', { n: 1 }));
+    await act(async () => root.unmount());
+  });
+
+  it('no s’inicia si el temporitzador manual és actiu, i el manual fa la seva foto', async () => {
+    const { div, root, an } = await montaP3({ ...mesuresBones(), llum: 5 });
+    await passos(1500);
+    await act(async () => botoText(div, t('p3.temporitzador'))?.click());
+    an.posa(mesuresBones());
+    await passos(2500);
+    expect(guia(div)).toContain('La foto es farà en');
+    expect(guia(div)).not.toContain('automàticament');
+    await passos(3500);
+    await act(async () => {});
+    expect(fotosFetes(div)).toBe(1);
+    await act(async () => root.unmount());
+  });
+
+  it('un botó manual durant el compte automàtic hi preval (només es fa una foto)', async () => {
+    const { div, root } = await montaP3(mesuresBones());
+    await passos(3000);
+    expect(comptador(div)).not.toBe('');
+    await act(async () => botoText(div, t('p3.temporitzador'))?.click());
+    expect(guia(div)).toBe(t('p3.compteEnrere', { n: 5 }));
+    await passos(5200);
+    await act(async () => {});
+    expect(fotosFetes(div)).toBe(1);
+    await act(async () => root.unmount());
+  });
+
+  it('«Fer la foto ara» durant el compte automàtic fa una sola foto, sense confirmació', async () => {
+    const { div, root } = await montaP3(mesuresBones());
+    await passos(3000);
+    await act(async () => botoText(div, t('p3.feta'))?.click());
+    await act(async () => {});
+    expect(div.querySelector('[role="dialog"]')).toBeNull();
+    await passos(6000);
+    expect(fotosFetes(div)).toBe(1);
+    await act(async () => root.unmount());
+  });
+
+  it('després de capturar no es reinicia fins que es tria «Fer-ne una altra»', async () => {
+    const { div, root } = await montaP3(mesuresBones());
+    await passos(7000);
+    await act(async () => {});
+    expect(div.textContent).toContain(t('p3.capturada', { n: 1 }));
+    await passos(10000);
+    expect(fotosFetes(div)).toBe(1);
+    expect(comptador(div)).toBe('');
+    await act(async () => botoText(div, t('p3.altra'))?.click());
+    await passos(7500);
+    await act(async () => {});
+    expect(fotosFetes(div)).toBe(2);
+    await act(async () => root.unmount());
+  });
+
+  it('en desmuntar durant el compte no es fa cap foto ni queda cap temporitzador', async () => {
+    const { div, root } = await montaP3(mesuresBones());
+    await passos(3000);
+    expect(comptador(div)).not.toBe('');
+    await act(async () => root.unmount());
+    expect(jest.getTimerCount()).toBe(0);
+    await passos(5000);
+    expect(div.querySelectorAll('img')).toHaveLength(0);
   });
 });
