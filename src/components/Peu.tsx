@@ -8,7 +8,7 @@ import { DATA_COMPILACIO, VERSIO } from '../versio';
 export const Peu: React.FC = () => (
   <footer className={styles.peu}>
     <div className={styles.logoSignatura}>
-      <img src={signaturaVermella} alt={t('peu.ajuntament')} className={styles.imgSignatura} />
+      <img src={signaturaVermella} alt="" className={styles.imgSignatura} />
     </div>
     <p className={styles.peuText}>{t('peu.text')}</p>
     <p className={styles.versio} data-versio="">

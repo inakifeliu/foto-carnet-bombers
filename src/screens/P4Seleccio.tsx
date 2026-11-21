@@ -4,6 +4,7 @@ import type { IFoto } from '../captura/fotos';
 import { Boto } from '../components/Boto';
 import { Miniatura } from '../components/Miniatura';
 import { t } from '../i18n';
+import { Titol } from '../components/Titol';
 import styles from '../styles/brand.module.css';
 
 /** Índex de la foto amb més puntuació (la primera en cas d'empat); 0 si cap té puntuació. */
@@ -31,7 +32,7 @@ export const P4Seleccio: React.FC = () => {
 
   return (
     <section className={styles.pantalla}>
-      <h1 className={styles.titol}>{t('p4.titol')}</h1>
+      <Titol>{t('p4.titol')}</Titol>
       <p className={styles.nota}>{t('p4.nota')}</p>
       <ul className={styles.fotos}>
         {fotos.map((foto, i) => {

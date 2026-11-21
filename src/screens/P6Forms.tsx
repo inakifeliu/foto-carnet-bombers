@@ -6,6 +6,7 @@ import { Boto } from '../components/Boto';
 import { Modal } from '../components/Modal';
 import { TextRic } from '../components/TextRic';
 import { t, type ClauI18n } from '../i18n';
+import { Titol } from '../components/Titol';
 import styles from '../styles/brand.module.css';
 
 /** `navigator.onLine === false` (i canvis en directe); sense l'API, es suposa connectat. */
@@ -71,7 +72,7 @@ export const P6Forms: React.FC = () => {
 
   return (
     <section className={styles.pantalla}>
-      <h1 className={styles.titol}>{t('p6.titol')}</h1>
+      <Titol>{t('p6.titol')}</Titol>
       <p className={styles.text}>{t('p6.text')}</p>
       {!modalObert && avisos}
       <div className={styles.accions}>

@@ -4,6 +4,7 @@ import { nomFitxer } from '../app/formulari';
 import { clauCarpeta, esborraFitxerDesat, obteHandleDesat, potEsborrar } from '../captura/desar';
 import { Boto } from '../components/Boto';
 import { t } from '../i18n';
+import { Titol } from '../components/Titol';
 import styles from '../styles/brand.module.css';
 import segell from '../assets/brand/segell_historic_bombers.png';
 
@@ -48,7 +49,7 @@ export const P7Final: React.FC = () => {
       <div className={styles.logosBenvinguda}>
         <img src={segell} alt={t('logo.segell')} className={styles.imgBenvinguda} />
       </div>
-      <h1 className={styles.titol}>{t('p7.titol')}</h1>
+      <Titol>{t('p7.titol')}</Titol>
       <p className={styles.text}>{t('p7.text')}</p>
       {!esborrada && (
         <p className={styles.text}>
@@ -58,7 +59,8 @@ export const P7Final: React.FC = () => {
           })}
         </p>
       )}
-      <div role="status" className={styles.nota}>
+      {/* La regió d'estat sempre és al DOM (perquè s'anunciï el resultat), però només es veu quan té text. */}
+      <div role="status" className={esborrada || errorEsborrar ? styles.nota : undefined}>
         {esborrada ? t('p7.esborrada') : errorEsborrar ? t('p7.errorEsborrar') : ''}
       </div>
       <div className={styles.accions}>

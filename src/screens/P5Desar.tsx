@@ -5,6 +5,7 @@ import { codificaJpeg, desaFitxer, entornDesatActual, recordaHandleDesat } from 
 import { Boto } from '../components/Boto';
 import { Miniatura } from '../components/Miniatura';
 import { t } from '../i18n';
+import { Titol } from '../components/Titol';
 import styles from '../styles/brand.module.css';
 
 export const P5Desar: React.FC = () => {
@@ -39,7 +40,7 @@ export const P5Desar: React.FC = () => {
 
   return (
     <section className={styles.pantalla}>
-      <h1 className={styles.titol}>{t('p5.titol')}</h1>
+      <Titol>{t('p5.titol')}</Titol>
       <div className={styles.previa}>
         <Miniatura etiqueta={t('p4.foto', { n: estat.fotoTriada + 1 })} src={foto?.url} />
       </div>
