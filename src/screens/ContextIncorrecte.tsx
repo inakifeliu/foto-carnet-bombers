@@ -10,6 +10,7 @@ export const ContextIncorrecte: React.FC = () => (
     <Capcalera />
     <main className={styles.principal}>
       <section className={styles.pantalla}>
+        <h1 className={styles.titol}>{t('rf19.titol')}</h1>
         <p className={styles.text} role="alert">
           {t('rf19.missatge')}
         </p>
