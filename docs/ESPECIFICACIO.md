@@ -520,11 +520,11 @@ Esquelet:
 
 **Fet quan**: es pot fer una foto, desar-la com a `12345.jpg` a Imatges i, oberta a Windows, té 413×531 px i 300 ppp.
 
-**Estat (branca `html-autonom/fase-1`)**: implementat i provat amb tests i amb Edge headless (càmera simulada; el diàleg de desat se simula amb un mock pel mateix camí de codi). **Pendent**: la prova manual al Surface (càmera real, diàleg de Windows real i propietats del fitxer desat: 413×531 px i 300 ppp). A P3 només hi ha captura manual (sense semàfors ni captura automàtica, Fase 2/3) i la puntuació de P4 és provisional (simulada).
+**Estat (21/11/2026)**: implementada, **provada al Surface per l'usuari i fusionada a `main`**.
 
 ### Fase 2 — Visió i guiatge en temps real
 
-**Estat (branca `html-autonom/fase-2`)**: implementat i provat amb tests unitaris (378) i Edge headless amb càmera simulada sense cara. **Pendent**: prova manual amb una cara real al Surface i calibratge dels llindars (vegeu README, «Visió i guiatge»).
+**Estat (21/11/2026)**: implementada, **provada al Surface per l'usuari i fusionada a `main`**. El calibratge dels llindars amb cares reals en diversos parcs és de la Fase 5 (vegeu README, «Calibratge»).
 - Càrrega de MediaPipe des dels recursos incrustats (RF-02, RF-03, RF-20), bucle d'anàlisi (RF-04).
 - Tots els controls de RF-05, semàfors, missatge prioritari i silueta guia.
 - Retall intel·ligent RF-07.
@@ -540,13 +540,15 @@ Esquelet:
 
 **Fet quan**: el flux complet funciona de punta a punta amb un Forms de proves.
 
-> Estat (21/11/2026): implementada (captura automàtica, 3 fotos, P4, P5/P6/P7 i RF-15, amb RF-09 aplicat en triar a P4); pendent de la prova manual al Surface amb cara real i amb el Forms real.
+> Estat (21/11/2026): implementada (captura automàtica, 3 fotos, P4, P5/P6/P7 i RF-15, amb RF-09 aplicat en triar a P4), **provada al Surface per l'usuari i fusionada a `main`** (PR #1).
 
 ### Fase 4 — Acabats
 - Repàs de la identitat gràfica (§6) a totes les pantalles.
 - Accessibilitat, textos revisats, il·lustracions de les instruccions.
 - Guió de proves manuals amb el fitxer final (diferents equips de parc, webcams i llums) i proves de distribució (§10).
 - README complet (build, configuració, distribució, calibratge) i document d'instruccions per als bombers.
+
+> **Estat (v0.2.0, branca `html-autonom/fase-4`)**: **implementada, pendent de prova manual** amb el guió (`docs/GUIO-PROVES-MANUALS.md`). Fet: identitat gràfica a totes les pantalles (variables de §6, protecció dels logos, finestres estretes fins a ~360 px), accessibilitat (contrast AA comprovat per test, focus visible, focus al títol en canviar de pantalla, una sola `h1`, modals amb trampa de focus, `prefers-reduced-motion`, proves automàtiques amb `jest-axe` a cada pantalla), textos revisats, il·lustracions SVG de les instruccions de P1, guió de proves manuals, `docs/INSTRUCCIONS-BOMBERS.md` i README complet. Pendent: provar-ho tot amb el fitxer final a equips de parc, amb webcams i llums diferents, i fer les proves de distribució de §10.
 
 ### Fase 5 — Calibratge i pilot (sense codi nou)
 - Sessió de calibratge amb el mode diagnòstic (Ctrl + Alt + D) en 2-3 parcs diferents (llums diferents). Ajust de `config.json`, nova compilació i nova versió.
