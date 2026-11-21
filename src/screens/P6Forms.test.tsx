@@ -142,7 +142,7 @@ describe('P6: obertura del formulari (RF-12, RF-13)', () => {
     desmonta();
   });
 
-  it('amb el marcador XXXX actual, el formulari s’obre igualment', () => {
+  it('amb la configuració per defecte, el formulari s’obre amb la matrícula a la URL', () => {
     const { div, desmonta } = monta();
     act(() => botoText(div, t('p6.obrir'))?.click());
     expect(obre).toHaveBeenCalledTimes(1);

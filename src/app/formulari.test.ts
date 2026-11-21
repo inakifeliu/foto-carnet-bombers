@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { resolConfigDeText } from '../config/configuracio';
 import {
   avaluaPlantillaForms,
   compilaRegexMatricula,
@@ -151,5 +154,15 @@ describe('avaluaPlantillaForms (validació del build)', () => {
   it("la regex de la matrícula es valida amb el mateix embolcall que l'app", () => {
     expect(compilaRegexMatricula('[0-9]+').source).toBe('^(?:[0-9]+)$');
     expect(() => compilaRegexMatricula('([')).toThrow();
+  });
+});
+
+describe('config/config.json (el que s’entrega)', () => {
+  it('resol sense avisos i la plantilla del Forms és vàlida', () => {
+    const text = readFileSync(join(process.cwd(), 'config', 'config.json'), 'utf8');
+    const r = resolConfigDeText(text);
+    expect(r.avisos).toEqual([]);
+    expect(diagnosticaPlantilla(r.config.forms.urlPlantilla)).toBe('ok');
+    expect(avaluaPlantillaForms(r.config.forms.urlPlantilla).provisional).toBe(false);
   });
 });
