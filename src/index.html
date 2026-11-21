@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ca">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@@TITOL@@</title>
+    <noscript
+      ><style>
+        #arrel {
+          display: none;
+        }
+      </style></noscript
+    >
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #ffffff;
+      }
+      body {
+        font-family: 'ITC Franklin Gothic Std', 'Franklin Gothic Medium', 'Franklin Gothic', Arial, sans-serif;
+      }
+      /* RF-19: missatge estàtic visible fins que arrenca l'app (React el substitueix en muntar-se). */
+      .missatge-inicial {
+        max-width: 40rem;
+        margin: 15vh auto 0;
+        padding: 0 24px;
+        font-size: 24px;
+        line-height: 1.4;
+        color: #1a1a1a;
+      }
+    </style>
+    <style>
+      @@CSS@@;
+    </style>
+  </head>
+  <body>
+    <div id="arrel"><p class="missatge-inicial">@@MISSATGE_RF19@@</p></div>
+    <noscript><p class="missatge-inicial">@@MISSATGE_RF19@@</p></noscript>
+    <script type="application/json" id="recursos-manifest">
+      @@MANIFEST@@
+    </script>
+    @@RECURSOS@@
+    <script>
+      @@JS@@
+    </script>
+  </body>
+</html>

@@ -1,18 +1,92 @@
 # Foto Carnet Bombers de Barcelona
 
-Aplicació en **un únic fitxer HTML** perquè els bombers del SPCPEIS es facin ells mateixos la foto de carnet amb el polo de l'uniforme: captura guiada amb webcam, retall automàtic a 35 × 45 mm, desat local com a `MATRICULA.jpg` i pujada via Microsoft Forms. El fitxer es distribueix per SharePoint, OneDrive o correu i s'obre amb doble clic a Edge, sense instal·lar res.
+Aplicació en **un únic fitxer HTML autònom** perquè els bombers del SPCPEIS es facin ells mateixos la foto de carnet amb el polo de l'uniforme: captura guiada amb webcam, retall automàtic a 35 × 45 mm, desat local com a `MATRICULA.jpg` i pujada via Microsoft Forms. El fitxer es distribueix per SharePoint, OneDrive o correu i s'obre amb doble clic a Edge, sense instal·lar res i sense connexió (només el Forms necessita xarxa).
 
 - Especificació completa (v0.3): [docs/ESPECIFICACIO.md](docs/ESPECIFICACIO.md)
-- Estat: viabilitat a `file://` validada en un Surface (21/11/2026). **Pendent**: esquelet de la Fase 0 i repetir la prova en un equip de parc.
-- La branca `fase-0/viabilitat-esquelet` conté la versió anterior com a web part SPFx (v0.2). Es manté com a arxiu i se'n reaprofitarà codi.
+- Estat: **Fase 0 (esquelet) feta**. Les pantalles P0–P7 naveguen amb dades simulades; la càmera, MediaPipe, el retall i el desat arriben a les Fases 1–3.
+- La branca `fase-0/viabilitat-esquelet` conté la versió anterior com a web part SPFx (v0.2). És només un arxiu: no es fusiona.
+
+## Requisits
+
+- **Node 22 o superior** i npm (només per compilar; l'usuari final no necessita res més que Edge).
+
+## Ordres
+
+| Ordre               | Què fa                                                                                                                    |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `npm install`       | Instal·la les dependències                                                                                                |
+| `npm run build`     | Valida la configuració, compila i genera **`dist/foto-carnet-bombers-vX.Y.Z.html`** i el seu `.sha256`, i passa la guarda |
+| `npm run verifica`  | Torna a passar la guarda sobre l'HTML ja generat a `dist/`                                                                |
+| `npm test`          | Tests (Jest + jsdom)                                                                                                      |
+| `npm run typecheck` | TypeScript estricte, sense emetre                                                                                         |
+| `npm run lint`      | ESLint (configuració plana, typescript-eslint, react-hooks)                                                               |
+| `npm run format`    | Prettier (`format:check` només comprova)                                                                                  |
+
+La sortida és sempre a `dist/` (no es versiona). El fitxer porta tot el codi, React, els models, el WASM de MediaPipe, els logos i la configuració.
+
+## Configuració
+
+`config/config.json` (llindars, regex de la matrícula, URL del Forms, ppp...) s'**incrusta en compilar**. Per canviar-la: edita el fitxer, incrementa la versió a `package.json`, `npm run build` i torna a distribuir (spec §10, D16).
+
+La mateixa lògica que fa servir l'app (`resolConfig` a `src/config/configuracio.ts`) la valida contra la forma i els tipus de `src/config/config.default.json`. **La compilació falla amb qualsevol avís** (clau desconeguda, tipus incorrecte, regex invàlida, `ppp` que no sigui 300/600...), perquè ja no hi ha cap panell on corregir-ho en execució.
+
+## Estructura
+
+```
+config/config.json            configuració que s'incrusta
+scripts/construeix.mjs        esbuild + incrustació de recursos + HTML + sha256 + guarda
+scripts/mediapipe-sense-telemetria.mjs   pegat de telemetria de MediaPipe
+scripts/verifica-html.mjs     guarda: cap telemetria ni host extern
+src/index.html                plantilla (missatge estàtic i <noscript>, RF-19)
+src/main.tsx, arrenca.tsx     arrencada (detecció d'iframe, RF-19)
+src/app, screens, components  màquina d'estats, pantalles P0–P7 + NoCompatible, components
+src/recursos                  descodificació dels recursos incrustats (RF-20)
+src/vision                    (de moment, només la prova de càrrega del mode diagnòstic)
+src/i18n/ca.json              tots els textos (català)
+src/assets                    brand/ (logos), models/, wasm/ (còpia verificada per SHA-256)
+```
+
+## Com s'incrusten els recursos (RF-20)
+
+El loader i el binari WASM de MediaPipe i els dos models es llegeixen en compilar, es comprimeixen amb **gzip (nivell 9) només si estalvia almenys el 10 %**, es codifiquen en base64 i es posen a `<script type="application/octet-stream" id="recurs-NOM">` (no s'executen). Un manifest JSON (`#recursos-manifest`) diu de cada recurs el tipus MIME, si està comprimit, la mida original i el SHA-256 dels bytes originals. En execució, `src/recursos` ofereix:
+
+- `obteRecurs(nom): Promise<Uint8Array>` — base64 → bytes → `DecompressionStream('gzip')` si cal.
+- `obteUrlBlob(nom, mime): Promise<string>` — URL `blob:` amb memòria cau, que s'allibera amb `revocaUrlsBlob()` i amb la neteja de memòria (RF-16: `pagehide` i «Començar de nou»).
+
+Els logos van com a URI `data:` (SVG com a `data:image/svg+xml;base64`), amb els bytes originals sense modificar.
+
+## Telemetria de MediaPipe i guarda de build
+
+`@mediapipe/tasks-vision` inclou un registre que envia dades d'ús a `odml.pa.googleapis.com`. El pegat `scripts/mediapipe-sense-telemetria.mjs` el neutralitza en compilar (3 substitucions; **falla si el patró no es troba**, p. ex. en pujar de versió). La guarda `scripts/verifica-html.mjs` s'executa sempre al final del build sobre l'HTML final i fa fallar la compilació (i n'esborra la sortida) si hi troba:
+
+- `googleapis` (excepte l'identificador protobuf `type.googleapis.com/`), `odml.` o `google-analytics`;
+- qualsevol URL `http(s)://` fora de la llista permesa: `www.w3.org` (espais de noms XML/SVG de React i dels logos), `reactjs.org` (text dels errors minificats de React) i el host del Forms de `config.json`;
+- `<script src>`, `<link href>` o `@import` (res no pot ser extern);
+- recursos incrustats que no coincideixin amb el seu SHA-256 del manifest.
+
+Per comprovar que la guarda funciona: `FCB_PROVA_SENSE_PEGAT=1 npm run build` desactiva el pegat i el build ha de fallar.
+
+## Mida
+
+Fitxer final (v0.1.0): **≈ 10,6 MB** (objectiu < 12 MB). Domina el WASM (14,0 MB → 4,0 MB amb gzip → 5,3 MB en base64) i el model de cara (3,6 MB → 3,2 MB → 4,2 MB). El build en mostra el detall.
+
+## Mode diagnòstic (base de RF-18)
+
+`Ctrl + Alt + D` o `#debug` al final de l'adreça mostra un panell amb versió, data de compilació i resum de la configuració, un botó que **comprova tots els recursos incrustats** (descodifica, descomprimeix i verifica SHA-256 i `WebAssembly.validate`) i un altre que prova la càrrega de MediaPipe amb els recursos incrustats. Mai mostra cap imatge. El diagnòstic complet és de la Fase 2.
+
+## Distribució
+
+Vegeu l'especificació, §10: compilar → prova manual del fitxer → publicar-lo a **una única ubicació de SharePoint/OneDrive** amb el `.sha256` → comunicar l'**enllaç** (no adjunt). Una versió nova és un fitxer nou amb la versió al nom. Cada usuari el descarrega i l'obre amb Edge (si Windows el marca com a baixat d'internet: _Propietats → Desbloqueja_). Si s'obre en una vista prèvia (Outlook, OneDrive, SharePoint) o dins un `iframe`, mostra «Descarrega aquest fitxer a l'ordinador i obre'l amb Microsoft Edge.».
+
+## Decisions provisionals (spec §12)
+
+Mentre no es resolguin, es fan servir els valors provisionals: D1 matrícula `^[0-9]{4,6}$`; D2 sobreescriure si el fitxer ja existeix; D5 300 ppp; D6 càmera ≥ 720p; D8 text RGPD de P0 pendent del DPD (el text actual és provisional); D9 ulleres graduades permeses; D10 sense validació matrícula ↔ usuari; D13 distribució per enllaç; D15 sense avís de versió antiga. La URL del Forms de `config.json` és un marcador (`XXXX`) fins a la Fase 5.
 
 ## Recursos gràfics
 
-A `src/webparts/fotoCarnet/assets/brand/` (es mouran a `src/assets/brand/` a la Fase 0):
+A `src/assets/brand/` (no s'han de modificar ni recolorir, §6):
 
 - `escut_bombers_color.png` — escut de Bombers en color (manual, p. 5)
 - `segell_historic_bombers.png` — segell històric (manual, p. 5)
 - `AJBCN_Sign_Com_Negre_Transparent_0.svg` — signatura de l'Ajuntament en negre (capçalera)
 - `AJBCN_Sign_Com_Vermell_Transparent.svg` — signatura de l'Ajuntament en vermell `#FF2828` (peu i pantalla final)
-
-No s'han de modificar ni recolorir (vegeu §6 de l'especificació).
