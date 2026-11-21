@@ -335,6 +335,37 @@ try {
 
   ok('P0 carregada', (await h1()) === 'Foto de carnet amb uniforme', await h1());
   ok('Pestanya visible (Page.bringToFront)', await esperaVisible(), JSON.stringify(await ev(`window.__visibilitat`)));
+  if (!senseWebgl && !rampa) {
+    // --- Fase 4: finestra estreta (360 px) sense scroll horitzontal, a P0 i P1, i focus al títol en canviar ---------
+    await cdp('Emulation.setDeviceMetricsOverride', { width: 360, height: 740, deviceScaleFactor: 1, mobile: false });
+    await dorm(300);
+    const sense_scroll = () => ev(`document.documentElement.scrollWidth <= window.innerWidth`);
+    ok(
+      'Finestra de 360 px: P0 sense scroll horitzontal',
+      await sense_scroll(),
+      await ev(`document.documentElement.scrollWidth + '/' + window.innerWidth`)
+    );
+    await clic('Començar');
+    await dorm(300);
+    ok(
+      'Finestra de 360 px: P1 sense scroll horitzontal',
+      await sense_scroll(),
+      await ev(`document.documentElement.scrollWidth + '/' + window.innerWidth`)
+    );
+    ok(
+      'Canvi de pantalla: el focus és al títol (h1) de P1',
+      (await ev(`document.activeElement === document.querySelector('h1')`)) === true
+    );
+    ok(
+      'P1: 9 il·lustracions SVG decoratives',
+      (await ev(`document.querySelectorAll('ol li svg[aria-hidden="true"]').length`)) === 9
+    );
+    await clic('Enrere');
+    await dorm(300);
+    await cdp('Emulation.clearDeviceMetricsOverride');
+    await dorm(300);
+    ok('Tornada a P0', (await h1()) === 'Foto de carnet amb uniforme', await h1());
+  }
   if (senseWebgl) {
     // --- Passada sense WebGL (RF-17): no es carreguen els models, la captura manual continua -----------------
     const webgl = await ev(
@@ -343,7 +374,7 @@ try {
     ok('Edge sense WebGL (ni 1 ni 2)', !webgl.webgl2 && !webgl.webgl, JSON.stringify(webgl));
     ok(
       'P0 avisa que no hi haurà anàlisi automàtica',
-      (await text()).includes("l'anàlisi automàtica no estarà disponible"),
+      (await text()).includes("no pot fer l'anàlisi automàtica de la imatge"),
       (await ev(`document.querySelector('main p:last-of-type')?.textContent ?? ''`)).slice(0, 80)
     );
     await arribaACaptura('12345');
