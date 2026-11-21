@@ -47,10 +47,10 @@ export const P6Forms: React.FC = () => {
     }
   };
 
-  return (
-    <section className={styles.pantalla}>
-      <h1 className={styles.titol}>{t('p6.titol')}</h1>
-      <p className={styles.text}>{t('p6.text')}</p>
+  // Avisos de connexió, de nom diferent i de configuració: es mostren dins el modal quan és obert (ocupa tota
+  // l'atenció) i a la pantalla quan és tancat.
+  const avisos = (
+    <>
       {senseConnexio && (
         <p className={styles.nota} role="status" data-offline="">
           {t('p6.senseConnexio', { carpeta })}
@@ -66,6 +66,14 @@ export const P6Forms: React.FC = () => {
           {t(CLAU_DIAGNOSTIC[diagnostic] ?? 'p6.sensePlantilla')}
         </p>
       )}
+    </>
+  );
+
+  return (
+    <section className={styles.pantalla}>
+      <h1 className={styles.titol}>{t('p6.titol')}</h1>
+      <p className={styles.text}>{t('p6.text')}</p>
+      {!modalObert && avisos}
       <div className={styles.accions}>
         <Boto variant="secundari" onClick={() => dispatch({ tipus: 'ENRERE' })}>
           {t('nav.enrere')}
@@ -82,6 +90,7 @@ export const P6Forms: React.FC = () => {
           onTancar={() => setModalObert(false)}
           retornaFocusA={() => botoInstruccions.current ?? undefined}
         >
+          {avisos}
           <ol className={styles.passos}>
             <li>
               <TextRic text={t('p6.pas1')} />
