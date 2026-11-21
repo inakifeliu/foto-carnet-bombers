@@ -236,6 +236,21 @@ try {
       `(() => { const i = document.querySelector('#fc-matricula'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i, ${JSON.stringify(valor)}); i.dispatchEvent(new Event('input', {bubbles:true})); return i.value; })()`
     );
   /** Espera fins que el vídeo tingui fotograma; si la càmera falla en arrencar, prem «Tornar a provar». */
+  // Mida esperada de la foto desada (sortida.mida = «original», alcadaMaxPx 2160): el rectangle del visor (35:45 el
+  // més gran possible, centrat) a la seva mida en píxels, amb mínim 413x531, i ppp = round(alt / (45 / 25,4)).
+  let camera = { w: 0, h: 0 };
+  const midaCamera = async () => {
+    camera = await ev(
+      `({ w: document.querySelector('video').videoWidth, h: document.querySelector('video').videoHeight })`
+    );
+    console.log(`   (càmera simulada: ${camera.w}x${camera.h})`);
+  };
+  const esperat = () => {
+    const { w: cw, h: ch } = camera;
+    let h = cw * 45 >= ch * 35 ? ch : Math.round((cw * 45) / 35);
+    h = Math.max(531, Math.min(h, 2160));
+    return { w: Math.max(413, Math.round((h * 35) / 45)), h, ppp: Math.round(h / (45 / 25.4)) };
+  };
   const esperaVideo = async () => {
     for (let i = 0; i < 40; i++) {
       const estat = await ev(
@@ -403,6 +418,7 @@ try {
         `[...document.querySelectorAll('button')].find((b) => b.textContent === 'Fer la foto ara')?.disabled`
       )) === false
     );
+    await midaCamera();
     ok('clic «Fer la foto ara»', (await clic('Fer la foto ara')) === 'ok');
     await dorm(1500);
     ok(
@@ -417,7 +433,12 @@ try {
     const mides = await ev(
       `[...document.querySelectorAll('main ul img')].map(i => i.naturalWidth + 'x' + i.naturalHeight)`
     );
-    ok('P4: la foto retallada és de 413x531', mides.length === 1 && mides[0] === '413x531', mides.join(','));
+    const mida1 = `${esperat().w}x${esperat().h}`;
+    ok(
+      `P4: la foto retallada és de ${mida1} (resolució original de la càmera)`,
+      mides.length === 1 && mides[0] === mida1,
+      mides.join(',')
+    );
     const p4 = await ev(`document.querySelector('main').textContent`);
     ok('P4: «Sense puntuació» (no hi ha anàlisi)', p4.includes('Sense puntuació'), p4.slice(0, 120));
     await clic('Triar aquesta');
@@ -641,6 +662,7 @@ try {
       )) === 0
     );
     // Captura manual ×2
+    await midaCamera();
     ok('clic «Fer la foto ara»', (await clic('Fer la foto ara')) === 'ok');
     await dorm(500);
     const dialeg = await ev(`document.querySelector('[role="dialog"]')?.textContent ?? ''`);
@@ -685,7 +707,8 @@ try {
     const mides = await ev(
       `[...document.querySelectorAll('main ul img')].map(i => i.naturalWidth + 'x' + i.naturalHeight)`
     );
-    ok('P4: 2 fotos retallades a 413x531', mides.length === 2 && mides.every((m) => m === '413x531'), mides.join(','));
+    const mida2 = `${esperat().w}x${esperat().h}`;
+    ok(`P4: 2 fotos retallades a ${mida2}`, mides.length === 2 && mides.every((m) => m === mida2), mides.join(','));
     const p4 = await ev(`document.querySelector('main').textContent`);
     const puntuacions = p4.match(/Puntuació: \d+ \/ 100/g) ?? [];
     ok(
@@ -741,10 +764,11 @@ try {
       types: [{ description: 'Imatge JPEG', accept: { 'image/jpeg': ['.jpg'] } }]
     });
     ok('Desat: el diàleg rep 12345.jpg, startIn pictures i tipus JPEG', des?.opcions === esperatOpcions, des?.opcions);
-    ok('JPEG: 413x531', des?.w === 413 && des?.h === 531, des && `${des.w}x${des.h}`);
+    const esp = esperat();
+    ok(`JPEG: ${esp.w}x${esp.h}`, des?.w === esp.w && des?.h === esp.h, des && `${des.w}x${des.h}`);
     ok(
-      'JPEG: APP0 JFIF, unitats = 1, 300x300 ppp',
-      des?.app0 === 'ffe0' && des.ident === 'JFIF' && des.unitats === 1 && des.x === 300 && des.y === 300,
+      `JPEG: APP0 JFIF, unitats = 1, ${esp.ppp}x${esp.ppp} ppp (35x45 mm)`,
+      des?.app0 === 'ffe0' && des.ident === 'JFIF' && des.unitats === 1 && des.x === esp.ppp && des.y === esp.ppp,
       des && `${des.unitats}/${des.x}/${des.y}`
     );
     if (rampa) {
@@ -757,7 +781,8 @@ try {
       );
     }
     ok('JPEG: cap segment APP1/EXIF', des && !des.app1, des?.marcadors.join(','));
-    ok('JPEG: mida < 300 KB', des && des.mida < 300 * 1024, des && String(des.mida));
+    console.log(`   (JPEG desat: ${des?.mida} bytes, ${des?.w}x${des?.h})`);
+    ok('JPEG: mida raonable (< 1,5 MB)', des && des.mida < 1.5 * 1024 * 1024, des && String(des.mida));
     await esperaCondicio(`document.querySelector('h1')?.textContent === 'Puja la foto al formulari'`);
     ok('P6 després de desar', (await h1()) === 'Puja la foto al formulari', await h1());
     const p6 = await text();
