@@ -28,7 +28,11 @@ La sortida és sempre a `dist/` (no es versiona). El fitxer porta tot el codi, R
 
 `config/config.json` (llindars, regex de la matrícula, URL del Forms, ppp...) s'**incrusta en compilar**. Per canviar-la: edita el fitxer, incrementa la versió a `package.json`, `npm run build` i torna a distribuir (spec §10, D16).
 
-La mateixa lògica que fa servir l'app (`resolConfig` a `src/config/configuracio.ts`) la valida contra la forma i els tipus de `src/config/config.default.json`. **La compilació falla amb qualsevol avís** (clau desconeguda, tipus incorrecte, regex invàlida, `ppp` que no sigui 300/600...), perquè ja no hi ha cap panell on corregir-ho en execució.
+La mateixa lògica que fa servir l'app (`resolConfig` a `src/config/configuracio.ts`) la valida contra la forma i els tipus de `src/config/config.default.json`. **La compilació falla amb qualsevol avís** (clau desconeguda, tipus incorrecte, regex invàlida, `ppp` que no sigui 300/600...), perquè ja no hi ha cap panell on corregir-ho en execució. La regex de la matrícula es valida amb el mateix embolcall `^(?:…)$` que usa l'app.
+
+**URL del Forms** (`forms.urlPlantilla`): el build la valida amb `diagnosticaPlantilla` (`src/app/formulari.ts`, la mateixa funció que fa servir P6). Ha de ser `https:`, contenir `{MATRICULA}` i el seu host ha de ser **exactament** un de `forms.office.com`, `forms.microsoft.com` o `forms.cloud.microsoft` (comparació exacta, mai per sufix ni subdomini). Qualsevol incompliment fa fallar el build. Mentre l'URL encara porti el marcador provisional `XXXX` (fins que hi hagi el Forms real), el build només mostra un **AVÍS** visible i continua. Si Microsoft canvia de domini, cal ampliar `HOSTS_FORMS` (i `HOSTS_FORMS_GUARDA` a la guarda; un test comprova que coincideixen).
+
+La data de compilació és en hora **local** de la màquina (no UTC).
 
 ## Estructura
 
@@ -37,7 +41,7 @@ config/config.json            configuració que s'incrusta
 scripts/construeix.mjs        esbuild + incrustació de recursos + HTML + sha256 + guarda
 scripts/mediapipe-sense-telemetria.mjs   pegat de telemetria de MediaPipe
 scripts/verifica-html.mjs     guarda: cap telemetria ni host extern
-src/index.html                plantilla (missatge estàtic i <noscript>, RF-19)
+src/index.html                plantilla (CSP, missatge estàtic i <noscript>, RF-19)
 src/main.tsx, arrenca.tsx     arrencada (detecció d'iframe, RF-19)
 src/app, screens, components  màquina d'estats, pantalles P0–P7 + NoCompatible, components
 src/recursos                  descodificació dels recursos incrustats (RF-20)
@@ -64,7 +68,31 @@ Els logos van com a URI `data:` (SVG com a `data:image/svg+xml;base64`), amb els
 - `<script src>`, `<link href>` o `@import` (res no pot ser extern);
 - recursos incrustats que no coincideixin amb el seu SHA-256 del manifest.
 
+## Content-Security-Policy (bloqueig de xarxa en execució)
+
+La guarda només inspecciona text; el bloqueig real de xarxa el fa la meta `Content-Security-Policy` de `src/index.html`:
+
+```
+default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval' blob:; connect-src blob:;
+img-src data: blob:; style-src 'unsafe-inline'; media-src blob: mediastream:; worker-src blob:;
+font-src data:; form-action 'none'; base-uri 'none'
+```
+
+Cap directiva admet `http(s):`, `ws(s):` ni `*`: qualsevol `fetch`/XHR/WebSocket/imatge externs queden bloquejats pel navegador. Cada excepció (`'unsafe-inline'` per al JS/CSS incrustats, `'wasm-unsafe-eval'` i `blob:` pel loader i el WASM de MediaPipe, `blob:`/`data:` per a imatges, etc.) està documentada en un comentari a `src/index.html`. Obrir el Forms (`window.open` / enllaç `target=_blank`) és una navegació i no queda afectat. `frame-ancestors` no funciona en una meta i no s'hi posa (l'iframe es detecta per codi, RF-19). La guarda comprova que la meta hi és, abans de qualsevol `<script>`, que no té cap directiva ni token fora de la llista (`CSP_PERMESA`) i que `connect-src`, `default-src`, `form-action` i `base-uri` són exactament els esperats.
+
+`npm run verifica` respecta `FCB_CONFIG` (ruta alternativa de configuració) igual que el build. A més dels patrons `http(s)://`, la guarda detecta URL `ws(s)://`, `ftp://`, protocol-relatives (`//host.tld/`) en cadenes i barres escapades (`https://`); els hosts permesos es comparen **exactament** (cap subdomini).
+
 Per comprovar que la guarda funciona: `FCB_PROVA_SENSE_PEGAT=1 npm run build` desactiva el pegat i el build ha de fallar.
+
+## Comprovar el hash (Windows)
+
+Al costat de cada HTML hi ha el seu `.sha256`. A PowerShell, des de la carpeta del fitxer:
+
+```powershell
+Get-FileHash -Algorithm SHA256 .oto-carnet-bombers-vX.Y.Z.html
+```
+
+El valor `Hash` ha de coincidir amb el contingut de `foto-carnet-bombers-vX.Y.Z.html.sha256`. Els finals de línia del repositori són sempre LF (`.gitattributes`), de manera que el hash és el mateix compilant a qualsevol màquina amb la mateixa versió i data de compilació.
 
 ## Mida
 
