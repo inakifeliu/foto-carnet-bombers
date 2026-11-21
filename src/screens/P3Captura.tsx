@@ -39,6 +39,8 @@ export const P3Captura: React.FC = () => {
   const botoAltra = React.useRef<HTMLButtonElement>(null);
   const botoProu = React.useRef<HTMLButtonElement>(null);
   const botoFeta = React.useRef<HTMLButtonElement>(null);
+  // Temporitzador: segons que falten per fer la foto (undefined = inactiu).
+  const [compte, setCompte] = React.useState<number | undefined>(undefined);
 
   React.useEffect(() => {
     const el = video.current;
@@ -112,6 +114,29 @@ export const P3Captura: React.FC = () => {
   };
 
   const potCapturar = camera.flux !== undefined && !camera.carregant && videoListo && !revisio && !maxAssolit;
+
+  // Temporitzador de 5 s: compte enrere d'un segon en un segon i, en arribar a 0, foto directa (sense confirmació:
+  // la persona ja s'ha col·locat). Es cancel·la si es perd la càmera o es surt de la pantalla (neteja de l'efecte).
+  const fesFotoRef = React.useRef(fesFoto);
+  fesFotoRef.current = fesFoto;
+  React.useEffect(() => {
+    if (compte === undefined) {
+      return undefined;
+    }
+    if (!potCapturar) {
+      setCompte(undefined);
+      return undefined;
+    }
+    const id = window.setTimeout(() => {
+      if (compte <= 1) {
+        setCompte(undefined);
+        void fesFotoRef.current();
+      } else {
+        setCompte(compte - 1);
+      }
+    }, 1000);
+    return () => window.clearTimeout(id);
+  }, [compte, potCapturar]);
   const enRevisio = revisio || maxAssolit;
 
   // Accessibilitat: en acabar la captura el focus va a l'acció següent (el botó pressionat desapareix).
@@ -182,10 +207,19 @@ export const P3Captura: React.FC = () => {
           {camera.carregant && !camera.error && <span className={styles.visorText}>{t('p3.carregant')}</span>}
           {debug && <OverlayDiagnostic />}
           <SiluetaGuia />
+          {compte !== undefined && (
+            <span className={styles.compteEnrere} aria-hidden="true" data-compte-enrere="">
+              {compte}
+            </span>
+          )}
         </div>
         <div className={styles.panell}>
           <div className={styles.guia} role="status" aria-live="polite" aria-atomic="true">
-            {revisio ? t('p3.capturada', { n: fotos.length }) : t(analisi.missatge ?? 'p3.guia')}
+            {compte !== undefined
+              ? t('p3.compteEnrere', { n: compte })
+              : revisio
+                ? t('p3.capturada', { n: fotos.length })
+                : t(analisi.missatge ?? 'p3.guia')}
           </div>
           {models.estat === 'carregant' && (
             <p className={styles.guiaCarregant} data-carregant-models="">
@@ -256,10 +290,19 @@ export const P3Captura: React.FC = () => {
               {t('p3.prouFotos')}
             </Boto>
           </>
-        ) : (
-          <Boto refBoto={botoFeta} onClick={alClicFeta} disabled={!potCapturar || ocupat}>
-            {t('p3.feta')}
+        ) : compte !== undefined ? (
+          <Boto variant="secundari" onClick={() => setCompte(undefined)}>
+            {t('p3.cancela')}
           </Boto>
+        ) : (
+          <>
+            <Boto variant="secundari" onClick={() => setCompte(5)} disabled={!potCapturar || ocupat}>
+              {t('p3.temporitzador')}
+            </Boto>
+            <Boto refBoto={botoFeta} onClick={alClicFeta} disabled={!potCapturar || ocupat}>
+              {t('p3.feta')}
+            </Boto>
+          </>
         )}
       </div>
 

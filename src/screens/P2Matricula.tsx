@@ -35,9 +35,6 @@ export const P2Matricula: React.FC = () => {
         <label htmlFor="fc-matricula" className={styles.etiqueta}>
           {t('p2.etiqueta')}
         </label>
-        <p id="fc-matricula-ajuda" className={styles.ajuda}>
-          {t('p2.ajuda')}
-        </p>
         <input
           id="fc-matricula"
           className={styles.camp}
@@ -45,7 +42,7 @@ export const P2Matricula: React.FC = () => {
           inputMode="numeric"
           autoComplete="off"
           value={valor}
-          aria-describedby="fc-matricula-ajuda fc-matricula-error"
+          aria-describedby="fc-matricula-error"
           aria-invalid={mostraError}
           onChange={(e) => setValor(e.target.value)}
           onBlur={() => valor.trim() !== '' && setTocat(true)}

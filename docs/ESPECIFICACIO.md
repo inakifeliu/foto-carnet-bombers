@@ -76,12 +76,12 @@ Llista il·lustrada (icona + text curt). Totes s'han de llegir; botó "Entesos, 
 1. **Fons blanc i llis** darrere teu (paret blanca, sense quadres ni portes).
 2. **Bona llum de cara**. Evita finestres o llums darrere teu.
 3. **Polo blau de l'uniforme**, net i ben posat.
-4. **Galeta de la categoria laboral** i **galeta amb el nom** cosides i visibles.
+4. **Galeta de la categoria laboral** i **galeta amb el nom i matrícula** visibles.
 5. **Sense gorra, casc ni ulleres de sol**. Si portes ulleres graduades, evita reflexos.
 6. **Cara descoberta**, cabells que no tapin els ulls.
 7. **Mirada a la càmera**, expressió neutra, boca tancada.
 8. **Espatlles rectes**, assegut/da a una distància d'un braç de la pantalla.
-9. Si pots, demana a un company que comprovi l'enquadrament.
+9. Si pots, demana a un company/a que comprovi l'enquadrament.
 
 ### P2 — Matrícula
 - Camp únic: **Matrícula**.

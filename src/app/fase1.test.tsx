@@ -250,6 +250,45 @@ describe('P3: captura manual', () => {
     div.remove();
   });
 
+  it('el temporitzador compta 5 s i fa la foto; «Cancel·lar» l’atura', async () => {
+    espiaUrl();
+    simulaCanvas(() => new Blob(['x'], { type: 'image/png' }));
+    const { div, root, video } = await montaP3();
+    await donaFotograma(video);
+    jest.useFakeTimers();
+    try {
+      // Cancel·lar: no es fa cap foto.
+      await act(async () => botoText(div, t('p3.temporitzador'))?.click());
+      expect(div.querySelector('[data-compte-enrere]')?.textContent).toBe('5');
+      // Cada segon es programa després de renderitzar el compte anterior: s'avança d'un en un.
+      for (let i = 0; i < 2; i++) {
+        await act(async () => {
+          jest.advanceTimersByTime(1000);
+        });
+      }
+      expect(div.querySelector('[data-compte-enrere]')?.textContent).toBe('3');
+      await act(async () => botoText(div, t('p3.cancela'))?.click());
+      await act(async () => {
+        jest.advanceTimersByTime(5000);
+      });
+      expect(div.querySelector('[data-compte-enrere]')).toBeNull();
+      expect(div.textContent).not.toContain(t('p3.capturada', { n: 1 }));
+      // Compte complet: en arribar a 0 es fa la foto.
+      await act(async () => botoText(div, t('p3.temporitzador'))?.click());
+      for (let i = 0; i < 5; i++) {
+        await act(async () => {
+          jest.advanceTimersByTime(1000);
+        });
+      }
+    } finally {
+      jest.useRealTimers();
+    }
+    await act(async () => {});
+    expect(div.textContent).toContain(t('p3.capturada', { n: 1 }));
+    await act(async () => root.unmount());
+    div.remove();
+  });
+
   it('si creaFoto falla mostra l’error i buida el canvas retallat', async () => {
     espiaUrl();
     const codificats = simulaCanvas(() => null);
