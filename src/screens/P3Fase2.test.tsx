@@ -712,7 +712,7 @@ describe('P3 Fase 3: captura automàtica', () => {
     await act(async () => botoText(div, t('p3.temporitzador'))?.click());
     an.posa(mesuresBones());
     await passos(2500);
-    expect(guia(div)).toContain('La foto es farà en');
+    expect(guia(div)).toBe(t('p3.compteEnrere', { n: 5 }));
     expect(guia(div)).not.toContain('automàticament');
     await passos(3500);
     await act(async () => {});

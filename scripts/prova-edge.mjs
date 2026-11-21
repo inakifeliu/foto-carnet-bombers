@@ -751,7 +751,7 @@ try {
     );
     console.log('   URL rebuda per window.open: ' + (obert[0]?.[0] ?? '?').slice(0, 60) + '…');
     const enllac = await ev(
-      `(() => { const a = [...document.querySelectorAll('a')].find(x => x.textContent.startsWith('Si no s') && x.textContent.endsWith('clica aquí')); return a ? { href: a.href, target: a.target, rel: a.rel } : null; })()`
+      `(() => { const a = [...document.querySelectorAll('a')].find(x => x.textContent.startsWith('Si no s') && x.target === '_blank'); return a ? { href: a.href, target: a.target, rel: a.rel } : null; })()`
     );
     ok(
       'P6: enllaç alternatiu visible (_blank, noopener noreferrer) amb la mateixa URL',
