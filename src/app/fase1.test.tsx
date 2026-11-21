@@ -384,6 +384,16 @@ describe('P5: desar (integració)', () => {
     expect(div.textContent).not.toContain(t('p5.errorDesat'));
     expect(avis).toHaveBeenCalledWith(expect.stringContaining('[desar] selector: AbortError: abort'));
     avis.mockRestore();
+    // Alternativa: desar-la directament a Baixades, sense tornar a obrir la finestra.
+    const clic = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    await act(async () => botoText(div, t('p5.desarBaixades'))?.click());
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(clic).toHaveBeenCalledTimes(1);
+    expect(h1(div)).toBe(t('p6.titol'));
+    expect(div.textContent).toContain(t('carpeta.baixades'));
+    clic.mockRestore();
     await act(async () => root.unmount());
     div.remove();
   });

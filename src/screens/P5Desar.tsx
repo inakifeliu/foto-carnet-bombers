@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useApp } from '../app/AppContext';
 import { nomFitxer } from '../app/formulari';
 import { pppSortida } from '../captura/retall';
-import { codificaJpeg, desaFitxer, entornDesatActual, recordaHandleDesat } from '../captura/desar';
+import { baixaAmbEnllac, codificaJpeg, desaFitxer, entornDesatActual, recordaHandleDesat } from '../captura/desar';
 import { Boto } from '../components/Boto';
 import { Miniatura } from '../components/Miniatura';
 import { t } from '../i18n';
@@ -17,7 +17,8 @@ export const P5Desar: React.FC = () => {
   const foto = fotos[estat.fotoTriada];
   const nom = nomFitxer(estat.matricula);
 
-  const desa = (): void => {
+  /** `aBaixades`: sense finestra, directament a Baixades (alternativa si la finestra de Windows no desa). */
+  const desa = (aBaixades = false): void => {
     if (!foto || desant) {
       return;
     }
@@ -26,8 +27,10 @@ export const P5Desar: React.FC = () => {
     setNoDesat(false);
     // IMPORTANT: `desaFitxer` s'invoca aquí mateix, dins el clic i sense cap await abans: obre el selector de
     // fitxers primer i només després codifica (RF-11).
-    desaFitxer(estat.matricula, () =>
-      codificaJpeg(foto.canvas, config.sortida.qualitatJpeg, pppSortida(config.sortida, foto.canvas.height))
+    desaFitxer(
+      estat.matricula,
+      () => codificaJpeg(foto.canvas, config.sortida.qualitatJpeg, pppSortida(config.sortida, foto.canvas.height)),
+      aBaixades ? { showSaveFilePicker: undefined, baixa: baixaAmbEnllac } : entornDesatActual()
     )
       .then((r) => {
         if (r.tipus === 'ok') {
@@ -67,11 +70,18 @@ export const P5Desar: React.FC = () => {
       <div role="status" className={styles.nota} hidden={!noDesat}>
         {noDesat ? t('p5.noDesat') : ''}
       </div>
+      {noDesat && (
+        <p className={styles.text}>
+          <Boto variant="secundari" onClick={() => desa(true)} disabled={desant}>
+            {t('p5.desarBaixades')}
+          </Boto>
+        </p>
+      )}
       <div className={styles.accions}>
         <Boto variant="secundari" onClick={() => dispatch({ tipus: 'ENRERE' })} disabled={desant}>
           {t('nav.enrere')}
         </Boto>
-        <Boto onClick={desa} disabled={!foto || desant}>
+        <Boto onClick={() => desa()} disabled={!foto || desant}>
           {desant ? t('p5.desant') : t('p5.desar')}
         </Boto>
       </div>
