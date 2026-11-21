@@ -49,3 +49,50 @@ describe('RegistreRecursos: tasques addicionals', () => {
     expect(r.pendents).toBe(0);
   });
 });
+
+describe('RegistreRecursos: un error no atura la resta de passos', () => {
+  it('continua alliberant encara que una pista, una revocació, un canvas o una tasca llencin', () => {
+    const boom = (): never => {
+      throw new Error('boom');
+    };
+    const revoca = jest.fn((url: string) => {
+      if (url === 'blob:a') {
+        boom();
+      }
+    });
+    const r = new RegistreRecursos(revoca);
+    const stopBo = jest.fn();
+    const stopSeguent = jest.fn();
+    r.registraFlux({ getTracks: () => [{ stop: boom }, { stop: stopBo }] });
+    r.registraFlux({ getTracks: boom });
+    r.registraFlux({ getTracks: () => [{ stop: stopSeguent }] });
+    r.registraUrl('blob:a');
+    r.registraUrl('blob:b');
+    const canvasMalament = {
+      get width(): number {
+        return 1;
+      },
+      set width(_v: number) {
+        boom();
+      },
+      height: 5
+    };
+    const canvasBo = { width: 10, height: 10 };
+    r.registraCanvas(canvasMalament);
+    r.registraCanvas(canvasBo);
+    const tascaMala = jest.fn(boom);
+    const tascaBona = jest.fn();
+    r.registraTasca(tascaMala);
+    r.registraTasca(tascaBona);
+
+    expect(() => r.neteja()).not.toThrow();
+
+    expect(stopBo).toHaveBeenCalledTimes(1);
+    expect(stopSeguent).toHaveBeenCalledTimes(1);
+    expect(revoca).toHaveBeenCalledWith('blob:b');
+    expect(canvasBo).toEqual({ width: 0, height: 0 });
+    expect(tascaMala).toHaveBeenCalledTimes(1);
+    expect(tascaBona).toHaveBeenCalledTimes(1);
+    expect(r.pendents).toBe(0);
+  });
+});

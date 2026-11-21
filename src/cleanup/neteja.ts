@@ -16,6 +16,15 @@ export interface IDimensionable {
   height: number;
 }
 
+/** Executa un pas de neteja ignorant-ne els errors (no s'ha de perdre cap altre alliberament). */
+function segur(pas: () => void): void {
+  try {
+    pas();
+  } catch {
+    // Silenciós a propòsit: no hi ha res més a fer i no s'ha d'aturar la neteja.
+  }
+}
+
 export class RegistreRecursos {
   private readonly fluxos: IFluxMitjans[] = [];
   private readonly urls: string[] = [];
@@ -41,17 +50,22 @@ export class RegistreRecursos {
     this.tasques.push(tasca);
   }
 
-  /** Allibera tot el registrat i el buida. Segur de cridar diverses vegades. */
+  /**
+   * Allibera tot el registrat i el buida. Segur de cridar diverses vegades. Cada pas va dins el seu
+   * try/catch: un error en un recurs (p. ex. una pista que llança en aturar-se) no atura la resta.
+   */
   public neteja(): void {
     this.fluxos.splice(0).forEach((flux) => {
-      flux.getTracks().forEach((pista) => pista.stop());
+      segur(() => flux.getTracks().forEach((pista) => segur(() => pista.stop())));
     });
-    this.urls.splice(0).forEach((url) => this.revoca(url));
-    this.canvas.splice(0).forEach((c) => {
-      c.width = 0;
-      c.height = 0;
-    });
-    this.tasques.splice(0).forEach((tasca) => tasca());
+    this.urls.splice(0).forEach((url) => segur(() => this.revoca(url)));
+    this.canvas.splice(0).forEach((c) =>
+      segur(() => {
+        c.width = 0;
+        c.height = 0;
+      })
+    );
+    this.tasques.splice(0).forEach((tasca) => segur(tasca));
   }
 
   public get pendents(): number {
