@@ -18,9 +18,14 @@ jest.mock('../recursos', () => ({
 
 import { carregaModels, esErrorGpu, modelsCarregats, tancaModels } from './mediapipe';
 
-const model = (): { close: jest.Mock } => ({ close: jest.fn() });
+const model = (): { close: jest.Mock; detectForVideo: jest.Mock; segmentForVideo: jest.Mock } => ({
+  close: jest.fn(),
+  detectForVideo: jest.fn(),
+  segmentForVideo: jest.fn()
+});
 
 beforeEach(() => {
+  jest.spyOn(console, 'warn').mockImplementation(() => undefined);
   crea.landmarker.mockReset();
   crea.segmenter.mockReset();
   revocaUrlsBlob.mockReset();
@@ -29,6 +34,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  jest.restoreAllMocks();
   tancaModels();
   registre.neteja();
   document.body.innerHTML = '';
@@ -42,7 +48,17 @@ describe('esErrorGpu (RF-02)', () => {
     'GPU delegate could not be initialized',
     'OpenGL ES 3.0 not supported',
     'Failed to compile shader',
-    'Texture creation failed'
+    'Texture creation failed',
+    'EGL_BAD_ALLOC',
+    'GL_INVALID_OPERATION: glTexImage2D',
+    'TfLiteGpuDelegate Init: No shader implementation',
+    'OpenCL library not loaded',
+    'Cannot read WebGLRenderingContext',
+    'CONTEXT_LOST_WEBGL',
+    'The context was lost',
+    'Failed to create glContext',
+    'Framebuffer is incomplete',
+    'Unable to initialize graphics'
   ])('%s és un error de GPU', (missatge) => {
     expect(esErrorGpu(new Error(missatge))).toBe(true);
   });
@@ -52,7 +68,10 @@ describe('esErrorGpu (RF-02)', () => {
     'WebAssembly.instantiate(): out of memory',
     'Failed to fetch',
     'Recurs incrustat desconegut: model-cara',
-    'Unexpected token'
+    'Unexpected token',
+    'Negligible difference in tensor shapes',
+    'Single value expected',
+    'Unexpected end of JSON input'
   ])('%s NO és un error de GPU', (missatge) => {
     expect(esErrorGpu(new Error(missatge))).toBe(false);
   });
@@ -114,14 +133,27 @@ describe('carregaModels', () => {
     expect(crea.landmarker.mock.calls[0][1].baseOptions.delegate).toBe('CPU');
   });
 
-  it('si falla el segmentador, el Face Landmarker ja creat es tanca', async () => {
+  it('el segmentador és opcional: si no es pot crear, el Face Landmarker continua', async () => {
     const lm = model();
     crea.landmarker.mockImplementation(async () => lm);
     crea.segmenter.mockImplementation(async () => {
       throw new Error('Model corrupte');
     });
-    await expect(carregaModels({ webGL2: true })).rejects.toThrow('Model corrupte');
-    expect(lm.close).toHaveBeenCalledTimes(1);
+    const m = await carregaModels({ webGL2: true });
+    expect(m.landmarker).toBe(lm);
+    expect(m.segmenter).toBeUndefined();
+    expect(lm.close).not.toHaveBeenCalled();
+    expect(modelsCarregats()).toBe(m);
+  });
+
+  it('crea el segmentador DESPRÉS del landmarker, amb el mateix delegat (també a CPU)', async () => {
+    crea.landmarker.mockImplementationOnce(async () => {
+      throw new Error('GPU delegate failed');
+    });
+    const m = await carregaModels({ webGL2: true });
+    expect(m.delegat).toBe('CPU');
+    expect(crea.segmenter).toHaveBeenCalledTimes(1);
+    expect(crea.segmenter.mock.calls[0][1].baseOptions.delegate).toBe('CPU');
   });
 
   it('les crides concurrents comparteixen la mateixa càrrega', async () => {
@@ -157,6 +189,76 @@ describe('carregaModels', () => {
     });
     await expect(carregaModels({ webGL2: true })).rejects.toThrow();
     expect(document.querySelectorAll('script[src^="blob:"]')).toHaveLength(0);
+  });
+});
+
+describe('escalfament dels models', () => {
+  it('fa una detecció i una segmentació amb un canvas buit abans de retornar, i en mesura el temps a part', async () => {
+    const lm = model();
+    const seg = model();
+    crea.landmarker.mockImplementation(async () => lm);
+    crea.segmenter.mockImplementation(async () => seg);
+    const m = await carregaModels({ webGL2: true });
+    expect(lm.detectForVideo).toHaveBeenCalledTimes(1);
+    expect(seg.segmentForVideo).toHaveBeenCalledTimes(1);
+    const [canvas, marcaDeteccio] = lm.detectForVideo.mock.calls[0];
+    expect(canvas).toBeInstanceOf(HTMLCanvasElement);
+    expect(seg.segmentForVideo.mock.calls[0][1]).toBeGreaterThan(marcaDeteccio);
+    expect(typeof m.msEscalfament).toBe('number');
+    expect(m.segmenter).toBe(seg);
+  });
+
+  it('si l’escalfament del segmentador falla, es tanca i es continua sense segmentador', async () => {
+    const lm = model();
+    const seg = model();
+    seg.segmentForVideo.mockImplementation(() => {
+      throw new Error('boom');
+    });
+    crea.landmarker.mockImplementation(async () => lm);
+    crea.segmenter.mockImplementation(async () => seg);
+    const m = await carregaModels({ webGL2: true });
+    expect(m.segmenter).toBeUndefined();
+    expect(seg.close).toHaveBeenCalledTimes(1);
+    expect(lm.close).not.toHaveBeenCalled();
+  });
+
+  it('si l’escalfament del Face Landmarker falla no impedeix la càrrega', async () => {
+    const lm = model();
+    lm.detectForVideo.mockImplementation(() => {
+      throw new Error('boom');
+    });
+    crea.landmarker.mockImplementation(async () => lm);
+    const m = await carregaModels({ webGL2: true });
+    expect(m.landmarker).toBe(lm);
+  });
+});
+
+describe('generació de càrrega', () => {
+  it('una càrrega en curs que acaba després de tancaModels tanca els models i no els assigna', async () => {
+    const lm = model();
+    const seg = model();
+    let alliberaLandmarker: (m: unknown) => void = () => undefined;
+    crea.landmarker.mockImplementation(() => new Promise((r) => (alliberaLandmarker = r)));
+    crea.segmenter.mockImplementation(async () => seg);
+    const p = carregaModels({ webGL2: true });
+    const rebutjada = expect(p).rejects.toThrow('cancel·lada');
+    await new Promise((r) => setTimeout(r, 0));
+    tancaModels(); // p. ex. la neteja RF-16 mentre es carrega
+    alliberaLandmarker(lm);
+    await rebutjada;
+    expect(lm.close).toHaveBeenCalledTimes(1);
+    expect(seg.close).toHaveBeenCalledTimes(1);
+    expect(modelsCarregats()).toBeUndefined();
+    // Una nova càrrega funciona amb normalitat.
+    crea.landmarker.mockImplementation(async () => model());
+    const nous = await carregaModels({ webGL2: true });
+    expect(modelsCarregats()).toBe(nous);
+  });
+
+  it('un tancaModels sense càrrega en curs no afecta les càrregues posteriors', async () => {
+    tancaModels();
+    const m = await carregaModels({ webGL2: true });
+    expect(modelsCarregats()).toBe(m);
   });
 });
 
