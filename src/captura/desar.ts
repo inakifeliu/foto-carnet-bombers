@@ -24,6 +24,10 @@ interface IEscriptor {
 export interface IHandleFitxer {
   /** Nom real del fitxer desat (l'usuari pot haver-lo canviat al diàleg). */
   name?: string;
+  /** `FileSystemFileHandle.remove()`: només en alguns navegadors (RF-15). */
+  remove?: () => Promise<void>;
+  queryPermission?: (opcions: { mode: 'readwrite' }) => Promise<string>;
+  requestPermission?: (opcions: { mode: 'readwrite' }) => Promise<string>;
   createWritable: () => Promise<IEscriptor>;
 }
 
@@ -146,6 +150,37 @@ export async function codificaJpeg(canvas: HTMLCanvasElement, qualitat: number, 
   }
   const bytes = escriuJfif(new Uint8Array(await blob.arrayBuffer()), ppp);
   return new Blob([bytes as BlobPart], { type: 'image/jpeg' });
+}
+
+export type ResultatEsborrat = 'ok' | 'permisDenegat' | 'noSuportat' | 'error';
+
+/** Indica si el handle permet esborrar el fitxer (RF-15): hi ha `remove()`. */
+export function potEsborrar(handle: IHandleFitxer | undefined): boolean {
+  return handle !== undefined && typeof handle.remove === 'function';
+}
+
+/**
+ * Esborra el fitxer desat (RF-15, millor esforç). S'ha de cridar des del gestor d'un clic: si cal, demana el permís
+ * `readwrite` (`queryPermission`/`requestPermission`) i després crida `remove()`.
+ */
+export async function esborraFitxerDesat(handle: IHandleFitxer | undefined): Promise<ResultatEsborrat> {
+  if (!handle || typeof handle.remove !== 'function') {
+    return 'noSuportat';
+  }
+  try {
+    const opcions = { mode: 'readwrite' } as const;
+    let permis = typeof handle.queryPermission === 'function' ? await handle.queryPermission(opcions) : 'granted';
+    if (permis !== 'granted' && typeof handle.requestPermission === 'function') {
+      permis = await handle.requestPermission(opcions);
+    }
+    if (permis !== 'granted') {
+      return 'permisDenegat';
+    }
+    await handle.remove();
+    return 'ok';
+  } catch {
+    return 'error';
+  }
 }
 
 /** FileSystemFileHandle del fitxer desat, només en memòria (per a l'esborrat opcional de RF-15). */
