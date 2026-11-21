@@ -12,7 +12,14 @@
   --color-ok: #1e8e3e;
   --color-avis: #f29900;
   --color-error: #b3261e;
+  /* Text verd sobre blanc (AA): el verd de l'estat (--color-ok) només és per a punts i vores. */
+  --color-ok-text: #146c2e;
+  /* Blau del polo de l'uniforme (només per a la il·lustració de P1). */
+  --color-polo: #1f4e8c;
   --color-vora: #d6d6d6;
+  --color-gris-sense-dades: #767676;
+  --color-cortina: rgba(0, 0, 0, 0.55);
+  --color-ombra-text: rgba(0, 0, 0, 0.8);
   --font-bombers: 'ITC Franklin Gothic Std', 'Franklin Gothic Medium', 'Franklin Gothic', Arial, sans-serif;
 
   box-sizing: border-box;
@@ -22,6 +29,23 @@
   font-family: var(--font-bombers);
   font-size: 18px;
   line-height: 1.5;
+}
+
+/* Focus visible clar a tots els controls (teclat): vora negra de 3 px amb separació, també sobre fons vermell. */
+.arrel :focus-visible {
+  outline: 3px solid var(--bcn-negre);
+  outline-offset: 3px;
+}
+
+/* Animacions i transicions només si l'usuari no demana moviment reduït. */
+@media (prefers-reduced-motion: reduce) {
+  .arrel *,
+  .arrel *::before,
+  .arrel *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 .arrel *,
@@ -64,8 +88,9 @@
 
 .peu {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
+  gap: 8px 16px;
   margin-top: 48px;
   border-top: 1px solid var(--color-vora);
   padding: 8px 24px;
@@ -88,6 +113,7 @@
 }
 
 .titol {
+  /* El títol rep el focus en canviar de pantalla (tabIndex -1): sense contorn si no ve del teclat. */
   margin: 0 0 24px;
   font-size: 36px;
   line-height: 1.2;
@@ -122,10 +148,12 @@
   margin-bottom: 24px;
 }
 
+/* Espai de protecció >= 10% de la mida del logo: el logo fa 96 px d'alçada i el marge és de 10 px. */
 .imgBenvinguda {
   display: block;
   height: 96px;
   width: auto;
+  margin: 10px;
 }
 
 /* --- Botons ---------------------------------------------------------------- */
@@ -138,11 +166,6 @@
   font-size: 18px;
   font-weight: 700;
   cursor: pointer;
-
-  &:focus-visible {
-    outline: 3px solid var(--bcn-negre);
-    outline-offset: 3px;
-  }
 
   &:disabled {
     cursor: not-allowed;
@@ -178,11 +201,6 @@
   color: var(--bcn-negre);
   font-weight: 700;
   text-decoration: underline;
-
-  &:focus-visible {
-    outline: 3px solid var(--bcn-negre);
-    outline-offset: 2px;
-  }
 }
 
 /* --- P1 instruccions ------------------------------------------------------- */
@@ -195,7 +213,7 @@
 .instruccio {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 20px;
   padding: 12px 0;
   border-bottom: 1px solid var(--color-gris-suau);
 }
@@ -205,12 +223,49 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   background: var(--color-gris-suau);
-  border: 2px solid var(--bcn-vermell);
-  font-weight: 700;
+}
+
+/* Il·lustracions de P1: traç de 2 px, colors de les variables, vermell com a accent. */
+.icona {
+  display: block;
+  width: 48px;
+  height: 48px;
+}
+
+.icTrac {
+  fill: none;
+  stroke: var(--color-text);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icAccent {
+  fill: none;
+  stroke: var(--bcn-vermell);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icPolo {
+  fill: var(--color-polo);
+  stroke: var(--color-text);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icOmple {
+  fill: var(--bcn-blanc);
+  stroke: var(--color-text);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .textInstruccio {
@@ -238,11 +293,6 @@
   border-radius: 4px;
   font-family: inherit;
   font-size: 24px;
-
-  &:focus-visible {
-    outline: 3px solid var(--bcn-vermell);
-    outline-offset: 2px;
-  }
 }
 
 .error {
@@ -289,8 +339,8 @@
   justify-content: center;
   font-size: 160px;
   font-weight: 700;
-  color: #fff;
-  text-shadow: 0 0 12px rgba(0, 0, 0, 0.8);
+  color: var(--bcn-blanc);
+  text-shadow: 0 0 12px var(--color-ombra-text);
   pointer-events: none;
   z-index: 2;
 }
@@ -371,7 +421,7 @@
 }
 
 .semaforCap {
-  background: #8a8a8a;
+  background: var(--color-gris-sense-dades);
 }
 
 .semaforsPanell {
@@ -405,7 +455,7 @@
 
 .recomanada {
   font-weight: 700;
-  color: var(--color-ok);
+  color: var(--color-ok-text);
 }
 
 /* --- P4/P5 fotos ----------------------------------------------------------- */
@@ -452,13 +502,6 @@
   font-weight: 700;
 }
 
-.etiquetaRecomanada {
-  margin: 4px 0 0;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--bcn-vermell-text);
-}
-
 .miniaturaImg {
   display: block;
   width: 100%;
@@ -484,7 +527,7 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: rgba(0, 0, 0, 0.55);
+  background: var(--color-cortina);
 }
 
 .modal {
@@ -541,4 +584,47 @@
 .versio {
   margin: 0 0 0 auto;
   font-size: 14px;
+}
+
+/* --- Finestres estretes (fins a ~360 px, sense scroll horitzontal) ---------- */
+@media (max-width: 600px) {
+  .capcalera {
+    padding: 4px 12px;
+  }
+
+  .peu {
+    padding: 8px 12px;
+  }
+
+  .principal {
+    padding: 32px 16px;
+  }
+
+  .titol {
+    font-size: 28px;
+  }
+
+  .guia {
+    font-size: 24px;
+  }
+
+  .compteEnrere {
+    font-size: 112px;
+  }
+
+  .modalFons {
+    padding: 12px;
+  }
+
+  .modal {
+    padding: 20px;
+  }
+
+  .versio {
+    margin-left: 0;
+  }
+
+  .debug {
+    margin: 12px;
+  }
 }

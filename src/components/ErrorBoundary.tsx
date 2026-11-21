@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { netejaTot } from '../cleanup/neteja';
 import { t } from '../i18n';
+import { Titol } from './Titol';
 import styles from '../styles/brand.module.css';
 import { DATA_COMPILACIO, VERSIO } from '../versio';
 
@@ -45,7 +46,7 @@ export class ErrorBoundary extends React.Component<IProps, IEstat> {
       <div className={styles.arrel}>
         <main className={styles.principal} data-error="">
           <section className={styles.pantalla}>
-            <h1 className={styles.titol}>{t('error.titol')}</h1>
+            <Titol>{t('error.titol')}</Titol>
             <p className={styles.text} role="alert">
               {t('error.missatge')}
             </p>

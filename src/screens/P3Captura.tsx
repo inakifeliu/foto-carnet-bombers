@@ -12,6 +12,7 @@ import { OverlayDiagnostic } from '../components/OverlayDiagnostic';
 import { Semafor } from '../components/Semafor';
 import { SiluetaGuia } from '../components/SiluetaGuia';
 import { t, type ClauI18n } from '../i18n';
+import { Titol } from '../components/Titol';
 import styles from '../styles/brand.module.css';
 import { useAnalisi } from '../vision/useAnalisi';
 import { useModels } from '../vision/useModels';
@@ -256,8 +257,10 @@ export const P3Captura: React.FC = () => {
 
   return (
     <section className={styles.pantalla}>
-      <h1 className={styles.titol}>{t('p3.titol')}</h1>
-      <p className={styles.nota}>{t('p3.nota')}</p>
+      <Titol>{t('p3.titol')}</Titol>
+      <p className={styles.nota} data-nota-p3="">
+        {t(analisiDisponible ? 'p3.nota' : 'p3.notaSenseAnalisi')}
+      </p>
 
       {camera.error && (
         <div role="alert" className={styles.error}>
@@ -320,7 +323,7 @@ export const P3Captura: React.FC = () => {
         <div className={styles.panell}>
           <div className={styles.guia} role="status" aria-live="polite" aria-atomic="true">
             {compte !== undefined
-              ? t('p3.compteEnrere', { n: compte })
+              ? t('p3.compteEnrere', { n: 5 })
               : compteAuto !== undefined
                 ? t('p3.compteAuto', { n: segonsCompte })
                 : revisio

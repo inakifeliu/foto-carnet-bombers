@@ -236,6 +236,21 @@ try {
       `(() => { const i = document.querySelector('#fc-matricula'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i, ${JSON.stringify(valor)}); i.dispatchEvent(new Event('input', {bubbles:true})); return i.value; })()`
     );
   /** Espera fins que el vídeo tingui fotograma; si la càmera falla en arrencar, prem «Tornar a provar». */
+  // Mida esperada de la foto desada (sortida.mida = «original», alcadaMaxPx 2160): el rectangle del visor (35:45 el
+  // més gran possible, centrat) a la seva mida en píxels, amb mínim 413x531, i ppp = round(alt / (45 / 25,4)).
+  let camera = { w: 0, h: 0 };
+  const midaCamera = async () => {
+    camera = await ev(
+      `({ w: document.querySelector('video').videoWidth, h: document.querySelector('video').videoHeight })`
+    );
+    console.log(`   (càmera simulada: ${camera.w}x${camera.h})`);
+  };
+  const esperat = () => {
+    const { w: cw, h: ch } = camera;
+    let h = cw * 45 >= ch * 35 ? ch : Math.round((cw * 45) / 35);
+    h = Math.max(531, Math.min(h, 2160));
+    return { w: Math.max(413, Math.round((h * 35) / 45)), h, ppp: Math.round(h / (45 / 25.4)) };
+  };
   const esperaVideo = async () => {
     for (let i = 0; i < 40; i++) {
       const estat = await ev(
@@ -335,6 +350,37 @@ try {
 
   ok('P0 carregada', (await h1()) === 'Foto de carnet amb uniforme', await h1());
   ok('Pestanya visible (Page.bringToFront)', await esperaVisible(), JSON.stringify(await ev(`window.__visibilitat`)));
+  if (!senseWebgl && !rampa) {
+    // --- Fase 4: finestra estreta (360 px) sense scroll horitzontal, a P0 i P1, i focus al títol en canviar ---------
+    await cdp('Emulation.setDeviceMetricsOverride', { width: 360, height: 740, deviceScaleFactor: 1, mobile: false });
+    await dorm(300);
+    const sense_scroll = () => ev(`document.documentElement.scrollWidth <= window.innerWidth`);
+    ok(
+      'Finestra de 360 px: P0 sense scroll horitzontal',
+      await sense_scroll(),
+      await ev(`document.documentElement.scrollWidth + '/' + window.innerWidth`)
+    );
+    await clic('Començar');
+    await dorm(300);
+    ok(
+      'Finestra de 360 px: P1 sense scroll horitzontal',
+      await sense_scroll(),
+      await ev(`document.documentElement.scrollWidth + '/' + window.innerWidth`)
+    );
+    ok(
+      'Canvi de pantalla: el focus és al títol (h1) de P1',
+      (await ev(`document.activeElement === document.querySelector('h1')`)) === true
+    );
+    ok(
+      'P1: 9 il·lustracions SVG decoratives',
+      (await ev(`document.querySelectorAll('ol li svg[aria-hidden="true"]').length`)) === 9
+    );
+    await clic('Enrere');
+    await dorm(300);
+    await cdp('Emulation.clearDeviceMetricsOverride');
+    await dorm(300);
+    ok('Tornada a P0', (await h1()) === 'Foto de carnet amb uniforme', await h1());
+  }
   if (senseWebgl) {
     // --- Passada sense WebGL (RF-17): no es carreguen els models, la captura manual continua -----------------
     const webgl = await ev(
@@ -343,7 +389,7 @@ try {
     ok('Edge sense WebGL (ni 1 ni 2)', !webgl.webgl2 && !webgl.webgl, JSON.stringify(webgl));
     ok(
       'P0 avisa que no hi haurà anàlisi automàtica',
-      (await text()).includes("l'anàlisi automàtica no estarà disponible"),
+      (await text()).includes("no pot fer l'anàlisi automàtica de la imatge"),
       (await ev(`document.querySelector('main p:last-of-type')?.textContent ?? ''`)).slice(0, 80)
     );
     await arribaACaptura('12345');
@@ -372,6 +418,7 @@ try {
         `[...document.querySelectorAll('button')].find((b) => b.textContent === 'Fer la foto ara')?.disabled`
       )) === false
     );
+    await midaCamera();
     ok('clic «Fer la foto ara»', (await clic('Fer la foto ara')) === 'ok');
     await dorm(1500);
     ok(
@@ -386,7 +433,12 @@ try {
     const mides = await ev(
       `[...document.querySelectorAll('main ul img')].map(i => i.naturalWidth + 'x' + i.naturalHeight)`
     );
-    ok('P4: la foto retallada és de 413x531', mides.length === 1 && mides[0] === '413x531', mides.join(','));
+    const mida1 = `${esperat().w}x${esperat().h}`;
+    ok(
+      `P4: la foto retallada és de ${mida1} (resolució original de la càmera)`,
+      mides.length === 1 && mides[0] === mida1,
+      mides.join(',')
+    );
     const p4 = await ev(`document.querySelector('main').textContent`);
     ok('P4: «Sense puntuació» (no hi ha anàlisi)', p4.includes('Sense puntuació'), p4.slice(0, 120));
     await clic('Triar aquesta');
@@ -610,6 +662,7 @@ try {
       )) === 0
     );
     // Captura manual ×2
+    await midaCamera();
     ok('clic «Fer la foto ara»', (await clic('Fer la foto ara')) === 'ok');
     await dorm(500);
     const dialeg = await ev(`document.querySelector('[role="dialog"]')?.textContent ?? ''`);
@@ -654,7 +707,8 @@ try {
     const mides = await ev(
       `[...document.querySelectorAll('main ul img')].map(i => i.naturalWidth + 'x' + i.naturalHeight)`
     );
-    ok('P4: 2 fotos retallades a 413x531', mides.length === 2 && mides.every((m) => m === '413x531'), mides.join(','));
+    const mida2 = `${esperat().w}x${esperat().h}`;
+    ok(`P4: 2 fotos retallades a ${mida2}`, mides.length === 2 && mides.every((m) => m === mida2), mides.join(','));
     const p4 = await ev(`document.querySelector('main').textContent`);
     const puntuacions = p4.match(/Puntuació: \d+ \/ 100/g) ?? [];
     ok(
@@ -710,10 +764,11 @@ try {
       types: [{ description: 'Imatge JPEG', accept: { 'image/jpeg': ['.jpg'] } }]
     });
     ok('Desat: el diàleg rep 12345.jpg, startIn pictures i tipus JPEG', des?.opcions === esperatOpcions, des?.opcions);
-    ok('JPEG: 413x531', des?.w === 413 && des?.h === 531, des && `${des.w}x${des.h}`);
+    const esp = esperat();
+    ok(`JPEG: ${esp.w}x${esp.h}`, des?.w === esp.w && des?.h === esp.h, des && `${des.w}x${des.h}`);
     ok(
-      'JPEG: APP0 JFIF, unitats = 1, 300x300 ppp',
-      des?.app0 === 'ffe0' && des.ident === 'JFIF' && des.unitats === 1 && des.x === 300 && des.y === 300,
+      `JPEG: APP0 JFIF, unitats = 1, ${esp.ppp}x${esp.ppp} ppp (35x45 mm)`,
+      des?.app0 === 'ffe0' && des.ident === 'JFIF' && des.unitats === 1 && des.x === esp.ppp && des.y === esp.ppp,
       des && `${des.unitats}/${des.x}/${des.y}`
     );
     if (rampa) {
@@ -726,7 +781,8 @@ try {
       );
     }
     ok('JPEG: cap segment APP1/EXIF', des && !des.app1, des?.marcadors.join(','));
-    ok('JPEG: mida < 300 KB', des && des.mida < 300 * 1024, des && String(des.mida));
+    console.log(`   (JPEG desat: ${des?.mida} bytes, ${des?.w}x${des?.h})`);
+    ok('JPEG: mida raonable (< 1,5 MB)', des && des.mida < 1.5 * 1024 * 1024, des && String(des.mida));
     await esperaCondicio(`document.querySelector('h1')?.textContent === 'Puja la foto al formulari'`);
     ok('P6 després de desar', (await h1()) === 'Puja la foto al formulari', await h1());
     const p6 = await text();
@@ -751,7 +807,7 @@ try {
     );
     console.log('   URL rebuda per window.open: ' + (obert[0]?.[0] ?? '?').slice(0, 60) + '…');
     const enllac = await ev(
-      `(() => { const a = [...document.querySelectorAll('a')].find(x => x.textContent.startsWith('Si no s') && x.textContent.endsWith('clica aquí')); return a ? { href: a.href, target: a.target, rel: a.rel } : null; })()`
+      `(() => { const a = [...document.querySelectorAll('a')].find(x => x.textContent.startsWith('Si no s') && x.target === '_blank'); return a ? { href: a.href, target: a.target, rel: a.rel } : null; })()`
     );
     ok(
       'P6: enllaç alternatiu visible (_blank, noopener noreferrer) amb la mateixa URL',

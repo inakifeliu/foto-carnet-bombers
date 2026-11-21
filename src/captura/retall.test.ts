@@ -1,5 +1,9 @@
 import {
+  midaFinal,
   midaSortida,
+  pppPerAlcada,
+  pppSortida,
+  type IOpcionsSortida,
   pasosReduccio,
   rectangleRetallCentrat,
   rectangleVisor,
@@ -19,6 +23,54 @@ describe('midaSortida', () => {
       const { w, h } = midaSortida(ppp);
       expect(Math.abs(w / h - 35 / 45) / (35 / 45)).toBeLessThan(0.002);
     });
+  });
+});
+
+const FIXA: IOpcionsSortida = { mida: 'fixa', ppp: 300, alcadaMaxPx: 2160 };
+const ORIGINAL: IOpcionsSortida = { mida: 'original', ppp: 300, alcadaMaxPx: 2160 };
+
+describe('midaFinal', () => {
+  it('«fixa»: sempre midaSortida(ppp), sigui quin sigui el retall', () => {
+    expect(midaFinal({ w: 840, h: 1080 }, FIXA)).toEqual({ w: 413, h: 531 });
+    expect(midaFinal({ w: 840, h: 1080 }, { ...FIXA, ppp: 600 })).toEqual({ w: 827, h: 1063 });
+  });
+  it('«original»: càmera 1920×1080 amb visor (840×1080) → 840×1080, sense reescalar', () => {
+    expect(midaFinal(rectangleVisor(1920, 1080), ORIGINAL)).toEqual({ w: 840, h: 1080 });
+  });
+  it('«original»: 1280×720 → 560×720; 640×480 (retall de 480 d’alçada) s’amplia al mínim 413×531', () => {
+    expect(midaFinal(rectangleVisor(1280, 720), ORIGINAL)).toEqual({ w: 560, h: 720 });
+    expect(midaFinal(rectangleVisor(640, 480), ORIGINAL)).toEqual({ w: 413, h: 531 });
+    expect(midaFinal(rectangleVisor(1280, 960), ORIGINAL)).toEqual({ w: 747, h: 960 });
+  });
+  it('«original»: un retall més petit que el mínim s’amplia fins a 413×531 (300 ppp) o 827×1063 (600 ppp)', () => {
+    expect(midaFinal({ w: 200, h: 257 }, ORIGINAL)).toEqual({ w: 413, h: 531 });
+    expect(midaFinal({ w: 200, h: 257 }, { ...ORIGINAL, ppp: 600 })).toEqual({ w: 827, h: 1063 });
+  });
+  it('«original»: més alt que alcadaMaxPx es redueix a aquesta alçada mantenint 35:45', () => {
+    expect(midaFinal(rectangleVisor(3840, 2160), ORIGINAL)).toEqual({ w: 1680, h: 2160 });
+    expect(midaFinal({ w: 2000, h: 2571 }, ORIGINAL)).toEqual({ w: 1680, h: 2160 });
+    expect(midaFinal({ w: 2000, h: 2571 }, { ...ORIGINAL, alcadaMaxPx: 1000 })).toEqual({ w: 778, h: 1000 });
+  });
+  it('«original»: la proporció és 35:45 amb un error < 0,2 % (alçades ≥ 531)', () => {
+    [531, 540, 720, 1080, 1440, 2160].forEach((h) => {
+      const m = midaFinal({ w: 1, h }, ORIGINAL);
+      expect(m.h).toBe(h);
+      expect(Math.abs(m.w / m.h - 35 / 45) / (35 / 45)).toBeLessThan(0.002);
+    });
+  });
+});
+
+describe('pppPerAlcada / pppSortida', () => {
+  it('ppp = round(alt / (45 / 25,4))', () => {
+    expect(pppPerAlcada(1080)).toBe(610);
+    expect(pppPerAlcada(531)).toBe(300);
+    expect(pppPerAlcada(1063)).toBe(600);
+    expect(pppPerAlcada(2160)).toBe(1219);
+    expect(pppPerAlcada(720)).toBe(406);
+  });
+  it('«fixa» fa servir la densitat configurada; «original» la calculada amb l’alçada real', () => {
+    expect(pppSortida({ ...FIXA, ppp: 600 }, 1080)).toBe(600);
+    expect(pppSortida(ORIGINAL, 1080)).toBe(610);
   });
 });
 
@@ -118,7 +170,7 @@ describe('retallaCentrat (amb un context 2D simulat)', () => {
     const origen = document.createElement('canvas');
     origen.width = 1920;
     origen.height = 1080;
-    const sortida = retallaCentrat(origen, { ppp: 300 });
+    const sortida = retallaCentrat(origen, { sortida: FIXA });
     expect([sortida.width, sortida.height]).toEqual([413, 531]);
     // 840×1080 → 413×531 és una reducció d'una mica més de 2x: un pas intermedi (420×540) i el final.
     expect(crides).toHaveLength(2);
@@ -129,11 +181,29 @@ describe('retallaCentrat (amb un context 2D simulat)', () => {
     expect([origen.width, origen.height]).toEqual([1920, 1080]);
   });
 
+  it('«original» 1920×1080: sortida 840×1080 en un sol pas 1:1', () => {
+    const origen = document.createElement('canvas');
+    origen.width = 1920;
+    origen.height = 1080;
+    const sortida = retallaCentrat(origen, { sortida: ORIGINAL });
+    expect([sortida.width, sortida.height]).toEqual([840, 1080]);
+    expect(crides).toHaveLength(1);
+    expect(crides[0].args).toEqual([540, 0, 840, 1080, 0, 0, 840, 1080]);
+  });
+
+  it('«original» 4K (3840×2160) amb alcadaMaxPx 1080: es redueix a 840×1080', () => {
+    const origen = document.createElement('canvas');
+    origen.width = 3840;
+    origen.height = 2160;
+    const sortida = retallaCentrat(origen, { sortida: { ...ORIGINAL, alcadaMaxPx: 1080 } });
+    expect([sortida.width, sortida.height]).toEqual([840, 1080]);
+  });
+
   it('600 ppp dona 827×1063', () => {
     const origen = document.createElement('canvas');
     origen.width = 1920;
     origen.height = 1080;
-    const sortida = retallaCentrat(origen, { ppp: 600 });
+    const sortida = retallaCentrat(origen, { sortida: { ...FIXA, ppp: 600 } });
     expect([sortida.width, sortida.height]).toEqual([827, 1063]);
   });
 
@@ -141,7 +211,7 @@ describe('retallaCentrat (amb un context 2D simulat)', () => {
     const origen = document.createElement('canvas');
     origen.width = 4000;
     origen.height = 3000;
-    const sortida = retallaCentrat(origen, { ppp: 300 });
+    const sortida = retallaCentrat(origen, { sortida: FIXA });
     expect([sortida.width, sortida.height]).toEqual([413, 531]);
     expect(crides.length).toBeGreaterThan(1);
     // El primer pas llegeix del rectangle centrat de l'origen; els següents, del canvas intermedi sencer.

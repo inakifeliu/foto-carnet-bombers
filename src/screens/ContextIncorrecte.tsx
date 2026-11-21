@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Capcalera } from '../components/Capcalera';
 import { Peu } from '../components/Peu';
 import { t } from '../i18n';
+import { Titol } from '../components/Titol';
 import styles from '../styles/brand.module.css';
 
 /** RF-19: l'aplicació s'ha obert dins un iframe (vista prèvia d'un servei): no es demana la càmera. */
@@ -10,7 +11,7 @@ export const ContextIncorrecte: React.FC = () => (
     <Capcalera />
     <main className={styles.principal}>
       <section className={styles.pantalla}>
-        <h1 className={styles.titol}>{t('rf19.titol')}</h1>
+        <Titol>{t('rf19.titol')}</Titol>
         <p className={styles.text} role="alert">
           {t('rf19.missatge')}
         </p>

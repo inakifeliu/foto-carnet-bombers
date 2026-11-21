@@ -2,7 +2,7 @@ import { CONFIG_PER_DEFECTE } from '../config/configuracio';
 import { creaLandmarks, creaMascara, mesuresBones } from '../test/escena';
 import type { IAnalitzador, IMostra } from '../vision/analitzador';
 import type { IMesures } from '../vision/tipus';
-import { rectangleVisor, retallaRectangle } from './retall';
+import { rectangleVisor, retallaRectangle, type IOpcionsSortida } from './retall';
 import { processaCaptura } from './processaCaptura';
 
 interface ICtx {
@@ -36,12 +36,15 @@ const analitzadorAmb = (mostra: Partial<IMostra> & { mesures: IMesures }): IAnal
   allibera: jest.fn()
 });
 
+const FIXA: IOpcionsSortida = { mida: 'fixa', ppp: 300, alcadaMaxPx: 2160 };
+const ORIGINAL: IOpcionsSortida = { mida: 'original', ppp: 300, alcadaMaxPx: 2160 };
+
 afterEach(() => jest.restoreAllMocks());
 
 describe('retallaRectangle', () => {
   it('rectangle dins el fotograma: es copia directament i surt a 413×531', () => {
     const ctx = espiaCanvas();
-    const sortida = retallaRectangle(fotograma(), { x: 754, y: 253, w: 412, h: 529 }, 300);
+    const sortida = retallaRectangle(fotograma(), { x: 754, y: 253, w: 412, h: 529 }, FIXA);
     expect(sortida.width).toBe(413);
     expect(sortida.height).toBe(531);
     expect(ctx.drawImage).toHaveBeenCalledTimes(1);
@@ -51,7 +54,7 @@ describe('retallaRectangle', () => {
 
   it('rectangle que surt del fotograma: la part de fora es pinta de blanc i la imatge hi va desplaçada', () => {
     const ctx = espiaCanvas();
-    const sortida = retallaRectangle(fotograma(), { x: 100, y: -60, w: 700, h: 900 }, 300);
+    const sortida = retallaRectangle(fotograma(), { x: 100, y: -60, w: 700, h: 900 }, FIXA);
     expect(sortida.width).toBe(413);
     expect(sortida.height).toBe(531);
     expect(ctx.fillStyle).toBe('#ffffff');
@@ -61,16 +64,26 @@ describe('retallaRectangle', () => {
     expect(aFons?.slice(1)).toEqual([-100, 60]);
   });
 
+  it('«original»: un rectangle de 840×1080 es desa a 840×1080, sense reescalar', () => {
+    const ctx = espiaCanvas();
+    const sortida = retallaRectangle(fotograma(), { x: 540, y: 0, w: 840, h: 1080 }, ORIGINAL);
+    expect([sortida.width, sortida.height]).toEqual([840, 1080]);
+    expect(ctx.drawImage.mock.calls[0].slice(1)).toEqual([540, 0, 840, 1080, 0, 0, 840, 1080]);
+  });
+
   it('600 ppp: 827 × 1063', () => {
     espiaCanvas();
-    const sortida = retallaRectangle(fotograma(), { x: 700, y: 100, w: 800, h: 1000 }, 600);
+    const sortida = retallaRectangle(fotograma(), { x: 700, y: 100, w: 800, h: 1000 }, { ...FIXA, ppp: 600 });
     expect([sortida.width, sortida.height]).toEqual([827, 1063]);
   });
 });
 
 describe('processaCaptura (RF-06, RF-07)', () => {
   // Aquest bloc prova el retall RF-07 (enquadrament «cap»); el «visor» (per defecte) té el seu bloc més avall.
-  const cfg = { ...CONFIG_PER_DEFECTE, sortida: { ...CONFIG_PER_DEFECTE.sortida, enquadrament: 'cap' as const } };
+  const cfg = {
+    ...CONFIG_PER_DEFECTE,
+    sortida: { ...CONFIG_PER_DEFECTE.sortida, enquadrament: 'cap' as const, mida: 'fixa' as const }
+  };
 
   it('sense analitzador (models no carregats): retall centrat de la Fase 1, sense puntuació i amb avís', () => {
     const ctx = espiaCanvas();
@@ -184,7 +197,7 @@ describe('processaCaptura (RF-06, RF-07)', () => {
 });
 
 describe('processaCaptura amb enquadrament «visor» (per defecte)', () => {
-  const cfg = CONFIG_PER_DEFECTE;
+  const cfg = { ...CONFIG_PER_DEFECTE, sortida: { ...CONFIG_PER_DEFECTE.sortida, mida: 'fixa' as const } };
 
   it('el per defecte és «visor»', () => {
     expect(cfg.sortida.enquadrament).toBe('visor');
@@ -209,6 +222,25 @@ describe('processaCaptura amb enquadrament «visor» (per defecte)', () => {
     expect([r.retallada.width, r.retallada.height]).toEqual([413, 531]);
     expect(r.avisos).toEqual([]);
     expect(r.puntuacio).toBeGreaterThan(90); // sense penalització per retall fora del fotograma
+  });
+
+  it('«original» (visor): la foto té la mida del retall, 840×1080 amb una càmera 1920×1080', () => {
+    espiaCanvas();
+    const r = processaCaptura(
+      fotograma(1920, 1080),
+      analitzadorAmb({ mesures: mesuresBones(), landmarks: creaLandmarks() }),
+      { ...cfg, sortida: { ...cfg.sortida, mida: 'original' } }
+    );
+    expect([r.retallada.width, r.retallada.height]).toEqual([840, 1080]);
+  });
+
+  it('«original» sense anàlisi: retall centrat a la seva mida', () => {
+    espiaCanvas();
+    const r = processaCaptura(fotograma(1280, 720), undefined, {
+      ...cfg,
+      sortida: { ...cfg.sortida, mida: 'original' }
+    });
+    expect([r.retallada.width, r.retallada.height]).toEqual([560, 720]);
   });
 
   it('600 ppp: 827×1063', () => {

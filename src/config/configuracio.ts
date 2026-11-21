@@ -1,5 +1,5 @@
 import { compilaRegexMatricula } from '../app/formulari';
-import type { Enquadrament } from '../captura/retall';
+import { midaSortida, type Enquadrament, type MidaSortida } from '../captura/retall';
 import defaultConfigJson from './config.default.json';
 
 /** Llindars de qualitat (RF-05). Tots els valors són configurables i s'han de calibrar amb fotos reals (RF-18). */
@@ -62,6 +62,10 @@ export interface IConfig {
   maxFotos: number;
   sortida: {
     ppp: number;
+    /** «original» (per defecte): el retall es desa a la resolució de la càmera, sense reescalar; «fixa»: sempre `midaSortida(ppp)`. */
+    mida: MidaSortida;
+    /** Alçada màxima en píxels amb «original» (càmeres 4K o superiors es redueixen a aquesta alçada mantenint 35:45). */
+    alcadaMaxPx: number;
     qualitatJpeg: number;
     /** «visor» (per defecte): la foto és exactament el que es veu al visor de P3; «cap»: retall RF-07 (cap = alcadaCapMm). */
     enquadrament: Enquadrament;
@@ -209,6 +213,18 @@ function aplicaRestriccions(config: IConfig, avisos: IAvis[]): IConfig {
   if (config.sortida.enquadrament !== 'visor' && config.sortida.enquadrament !== 'cap') {
     avisos.push({ codi: 'valorInvalid', camp: 'sortida.enquadrament' });
     config.sortida.enquadrament = CONFIG_PER_DEFECTE.sortida.enquadrament;
+  }
+  if (config.sortida.mida !== 'original' && config.sortida.mida !== 'fixa') {
+    avisos.push({ codi: 'valorInvalid', camp: 'sortida.mida' });
+    config.sortida.mida = CONFIG_PER_DEFECTE.sortida.mida;
+  }
+  if (
+    !Number.isInteger(config.sortida.alcadaMaxPx) ||
+    config.sortida.alcadaMaxPx < midaSortida(config.sortida.ppp).h ||
+    config.sortida.alcadaMaxPx > 16384
+  ) {
+    avisos.push({ codi: 'valorInvalid', camp: 'sortida.alcadaMaxPx' });
+    config.sortida.alcadaMaxPx = CONFIG_PER_DEFECTE.sortida.alcadaMaxPx;
   }
   (['yawSigne', 'pitchSigne'] as const).forEach((clau) => {
     if (config.llindars[clau] !== 1 && config.llindars[clau] !== -1) {

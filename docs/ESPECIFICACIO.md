@@ -122,7 +122,7 @@ Llista il·lustrada (icona + text curt). Totes s'han de llegir; botó "Entesos, 
   3. "Ves a la carpeta **Imatges** i tria **12345.jpg**."
   4. "Clica **Envia**."
 - Botó **"Obrir el formulari"** → `window.open(urlForms, '_blank', 'noopener')` (cal que sigui en resposta al clic, per evitar el bloqueig de finestres emergents).
-- Enllaç alternatiu visible "Si no s'ha obert, clica aquí".
+- Enllaç alternatiu visible "Si no s'ha obert, obre el formulari des d'aquest enllaç".
 - Si l'equip no té connexió, avís: "Cal connexió a internet per enviar el formulari. La foto ja està desada a Imatges; pots enviar-la més tard."
 - Botó "Ja l'he enviat" → P7.
 
@@ -181,7 +181,9 @@ Tots els llindars són **configurables** a `config.json` i s'han de **calibrar**
 
 ### RF-07 Retall al format oficial
 - Proporció **35:45** (amplada:alçada).
-- Mida de sortida per defecte: **413 × 531 px** (300 ppp). Configurable (`config.sortida.ppp`: 300 o 600 → 827 × 1063 px).
+- **Mida de sortida** (`config.sortida.mida`):
+  - **`"original"` (per defecte, D18)**: la foto és el rectangle de retall a la seva mida en píxels, **sense reescalar** (resolució original de la càmera; amb 1920 × 1080 i enquadrament «visor», 840 × 1080 px). L'ample se'n dedueix de l'alçada (35:45 amb enters). Si el retall és més petit que el mínim `midaSortida(sortida.ppp)` (413 × 531 px a 300 ppp), s'amplia fins al mínim. `config.sortida.alcadaMaxPx` (per defecte 2160) limita les càmeres 4K o superiors: el retall més alt es redueix per passos, amb qualitat alta, a aquesta alçada mantenint 35:45.
+  - **`"fixa"`**: sempre `midaSortida(ppp)`: 413 × 531 px (300 ppp) o 827 × 1063 px (600 ppp).
 - **Enquadrament** (`config.sortida.enquadrament`):
   - **`"visor"` (per defecte)**: la foto final és **exactament el que es veu al visor de P3** (sense el mirall): el rectangle 35:45 més gran centrat al fotograma de la càmera (el mateix que mostra `object-fit: cover`, sigui quina sigui la proporció de la càmera), de manera que s'hi veuen cap, espatlles i part de l'uniforme. Decisió de l'usuari del 21/11/2026 després de provar-ho al Surface. El visor, la captura, els controls que depenen del retall (5.3, 5.6, 5.11) i el rectangle previst del mode diagnòstic fan servir la mateixa funció (`rectangleVisor`). El retall sempre és dins el fotograma: no hi ha avís «Massa a prop / a la vora» ni penalització. Silueta guia i llindars (5.3: 0,22–0,30; zona del tors de 5.10/5.11 més avall i més ampla) pensats per a aquest enquadrament; **a calibrar** amb fotos reals.
   - **`"cap"`**: retall intel·ligent segons les normes DNI/OACI (opció configurable), descrit a continuació.
@@ -192,13 +194,13 @@ Tots els llindars són **configurables** a `config.json` i s'han de **calibrar**
 - La **part superior del cap** s'estima amb la màscara de segmentació (primer píxel de persona per sobre del front a la columna central de la cara); si no és fiable, com a front (landmark 10) + 0,25 × l'alçada front–barbeta.
 - La **barbeta** és el landmark 152.
 - (Només «cap».) Si el retall necessita píxels fora del fotograma, la foto es marca amb avís "Massa a prop / a la vora" i rep una penalització a la puntuació.
-- **No** es modifica el fons ni s'aplica cap retoc a la cara. Només retall i reescalat (interpolació d'alta qualitat).
+- **No** es modifica el fons ni s'aplica cap retoc a la cara. Només retall i, si cal (mínim, màxim o mida «fixa»), reescalat (interpolació d'alta qualitat).
 
 ### RF-08 Codificació JPEG
 - `canvas.toBlob('image/jpeg', 0.92)`.
-- **Escriure la densitat a la capçalera JFIF** (APP0): unitats = 1 (ppp), X = Y = `ppp` configurat, perquè s'imprimeixi a 35 × 45 mm. Implementar una funció petita que modifiqui els bytes de la capçalera, o la insereixi si no hi és.
+- **Escriure la densitat a la capçalera JFIF** (APP0): unitats = 1 (ppp), X = Y = densitat perquè s'imprimeixi a 35 × 45 mm: amb `"original"`, `round(alçada / (45 / 25,4))` (p. ex. 1080 px → 610 ppp); amb `"fixa"`, el `ppp` configurat. Implementar una funció petita que modifiqui els bytes de la capçalera, o la insereixi si no hi és.
 - Sense metadades EXIF (cap dada de l'equip ni de geolocalització).
-- Mida orientativa: < 300 KB.
+- Mida orientativa: 150–400 KB amb una càmera 1080p a qualitat 0,92 (amb mida «fixa» 413 × 531, < 300 KB). El Forms admet fitxers grans.
 
 ### RF-09 Selecció
 - Segons P4. La foto triada és l'única que es manté. Les altres s'alliberen immediatament (RF-16).
@@ -407,7 +409,7 @@ foto-carnet-bombers/
 {
   "matriculaRegex": "^[0-9]{4,6}$",
   "maxFotos": 3,
-  "sortida": { "ppp": 300, "qualitatJpeg": 0.92, "enquadrament": "visor",
+  "sortida": { "ppp": 300, "mida": "original", "alcadaMaxPx": 2160, "qualitatJpeg": 0.92, "enquadrament": "visor",
                "alcadaCapMm": 34, "margeSuperiorMm": 4 },
   "forms": { "urlPlantilla": "https://forms.office.com/Pages/ResponsePage.aspx?id=XXXX&rYYYY={MATRICULA}" },
   "captura": { "segonsEstableAbansCompte": 1, "compteEnrere": 3 },
@@ -518,13 +520,13 @@ Esquelet:
 - RF-11 desar a Imatges i RF-16 neteja.
 - Tests unitaris de JFIF i proporcions.
 
-**Fet quan**: es pot fer una foto, desar-la com a `12345.jpg` a Imatges i, oberta a Windows, té 413×531 px i 300 ppp.
+**Fet quan**: es pot fer una foto, desar-la com a `12345.jpg` a Imatges i, oberta a Windows, té la resolució de la càmera (amb «original»; amb «fixa», 413×531 px i 300 ppp).
 
-**Estat (branca `html-autonom/fase-1`)**: implementat i provat amb tests i amb Edge headless (càmera simulada; el diàleg de desat se simula amb un mock pel mateix camí de codi). **Pendent**: la prova manual al Surface (càmera real, diàleg de Windows real i propietats del fitxer desat: 413×531 px i 300 ppp). A P3 només hi ha captura manual (sense semàfors ni captura automàtica, Fase 2/3) i la puntuació de P4 és provisional (simulada).
+**Estat (21/11/2026)**: implementada, **provada al Surface per l'usuari i fusionada a `main`**.
 
 ### Fase 2 — Visió i guiatge en temps real
 
-**Estat (branca `html-autonom/fase-2`)**: implementat i provat amb tests unitaris (378) i Edge headless amb càmera simulada sense cara. **Pendent**: prova manual amb una cara real al Surface i calibratge dels llindars (vegeu README, «Visió i guiatge»).
+**Estat (21/11/2026)**: implementada, **provada al Surface per l'usuari i fusionada a `main`**. El calibratge dels llindars amb cares reals en diversos parcs és de la Fase 5 (vegeu README, «Calibratge»).
 - Càrrega de MediaPipe des dels recursos incrustats (RF-02, RF-03, RF-20), bucle d'anàlisi (RF-04).
 - Tots els controls de RF-05, semàfors, missatge prioritari i silueta guia.
 - Retall intel·ligent RF-07.
@@ -540,13 +542,15 @@ Esquelet:
 
 **Fet quan**: el flux complet funciona de punta a punta amb un Forms de proves.
 
-> Estat (21/11/2026): implementada (captura automàtica, 3 fotos, P4, P5/P6/P7 i RF-15, amb RF-09 aplicat en triar a P4); pendent de la prova manual al Surface amb cara real i amb el Forms real.
+> Estat (21/11/2026): implementada (captura automàtica, 3 fotos, P4, P5/P6/P7 i RF-15, amb RF-09 aplicat en triar a P4), **provada al Surface per l'usuari i fusionada a `main`** (PR #1).
 
 ### Fase 4 — Acabats
 - Repàs de la identitat gràfica (§6) a totes les pantalles.
 - Accessibilitat, textos revisats, il·lustracions de les instruccions.
 - Guió de proves manuals amb el fitxer final (diferents equips de parc, webcams i llums) i proves de distribució (§10).
 - README complet (build, configuració, distribució, calibratge) i document d'instruccions per als bombers.
+
+> **Estat (v0.2.0, branca `html-autonom/fase-4`)**: **implementada, pendent de prova manual** amb el guió (`docs/GUIO-PROVES-MANUALS.md`). Fet: identitat gràfica a totes les pantalles (variables de §6, protecció dels logos, finestres estretes fins a ~360 px), accessibilitat (contrast AA comprovat per test, focus visible, focus al títol en canviar de pantalla, una sola `h1`, modals amb trampa de focus, `prefers-reduced-motion`, proves automàtiques amb `jest-axe` a cada pantalla), textos revisats, il·lustracions SVG de les instruccions de P1, guió de proves manuals, `docs/INSTRUCCIONS-BOMBERS.md` i README complet. Pendent: provar-ho tot amb el fitxer final a equips de parc, amb webcams i llums diferents, i fer les proves de distribució de §10.
 
 ### Fase 5 — Calibratge i pilot (sense codi nou)
 - Sessió de calibratge amb el mode diagnòstic (Ctrl + Alt + D) en 2-3 parcs diferents (llums diferents). Ajust de `config.json`, nova compilació i nova versió.
@@ -565,6 +569,7 @@ Esquelet:
 | D4 | Destí final: **biblioteca de SharePoint** (via Forms + Power Automate) |
 | D7 | Identitat gràfica: escut de Bombers en color + segell històric (manual p. 5), signatura de l'Ajuntament (negre i vermell), sense logos 080 (§6) |
 | D17 | **Enquadrament de la foto final** (21/11/2026, després de provar-ho al Surface): per defecte és exactament el que es veu al visor de P3 (rectangle 35:45 centrat, amb cap, espatlles i part del polo), no el retall RF-07 amb el cap a 34/45 mm. El retall RF-07 es manté com a opció (`sortida.enquadrament: "cap"`). Llindar 5.3 i silueta guia adaptats; a calibrar |
+| D18 | **Resolució original** (22/11/2026): la foto desada té la resolució original de la càmera, sense reescalar (`sortida.mida: "original"`), perquè serveixi per a més usos que el carnet; mínim 413 × 531 px i màxim `alcadaMaxPx` (2160) d'alçada; densitat JFIF calculada per a 35 × 45 mm. El comportament anterior (`midaSortida(ppp)`) es manté com a `"fixa"`. Substitueix D5 |
 | D16 | Configuració fixada en compilar (`config/config.json`); canviar-la implica una versió nova |
 
 ### Pendents
@@ -593,7 +598,7 @@ Esquelet:
 
 - [ ] Un bomber sense ajuda pot completar el procés en < 5 min a partir de les instruccions, des de l'enllaç fins a l'enviament del Forms.
 - [ ] L'aplicació és **un sol fitxer HTML** que funciona amb doble clic a l'Edge dels equips corporatius, sense instal·lar res i sense permisos d'administrador.
-- [ ] El fitxer desat es diu exactament `{matricula}.jpg`, fa 35:45, té la resolució configurada i densitat JFIF correcta.
+- [ ] El fitxer desat es diu exactament `{matricula}.jpg`, fa 35:45, té la resolució original de la càmera (o la fixa configurada, mínim 413 × 531 px, màxim `alcadaMaxPx`) i densitat JFIF correcta per a 35 × 45 mm.
 - [ ] La foto és el que es veu al visor de P3 (enquadrament «visor», per defecte); amb enquadrament «cap», el cap ocupa ~75% de l'alçada (±5%) i està centrat.
 - [ ] L'aplicació no fa **cap petició de xarxa** fins que l'usuari obre el Forms (comprovat a les eines de desenvolupador), i la guarda de build passa.
 - [ ] No queda cap dada a l'emmagatzematge del navegador després del procés.

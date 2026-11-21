@@ -373,6 +373,31 @@ describe('P5: desar (integració)', () => {
     div.remove();
   });
 
+  it('si la finestra torna AbortError, es queda a P5, avisa que no s’ha desat i ho registra a la consola', async () => {
+    posaSaveFilePicker(jest.fn().mockRejectedValue(Object.assign(new Error('abort'), { name: 'AbortError' })));
+    const avis = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { div, root } = await montaP5();
+    expect(div.textContent).not.toContain(t('p5.noDesat'));
+    await desa(div);
+    expect(h1(div)).toBe(t('p5.titol'));
+    expect(div.textContent).toContain(t('p5.noDesat'));
+    expect(div.textContent).not.toContain(t('p5.errorDesat'));
+    expect(avis).toHaveBeenCalledWith(expect.stringContaining('[desar] selector: AbortError: abort'));
+    avis.mockRestore();
+    // Alternativa: desar-la directament a Baixades, sense tornar a obrir la finestra.
+    const clic = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    await act(async () => botoText(div, t('p5.desarBaixades'))?.click());
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(clic).toHaveBeenCalledTimes(1);
+    expect(h1(div)).toBe(t('p6.titol'));
+    expect(div.textContent).toContain(t('carpeta.baixades'));
+    clic.mockRestore();
+    await act(async () => root.unmount());
+    div.remove();
+  });
+
   it('amb SecurityError baixa amb <a download> i P6 i P7 diuen «Baixades»', async () => {
     posaSaveFilePicker(jest.fn().mockRejectedValue(Object.assign(new Error('seg'), { name: 'SecurityError' })));
     const clic = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);

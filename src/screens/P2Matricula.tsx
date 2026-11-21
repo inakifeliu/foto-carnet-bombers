@@ -4,6 +4,7 @@ import { validaMatricula } from '../app/formulari';
 import { Boto } from '../components/Boto';
 import { TextRic } from '../components/TextRic';
 import { t } from '../i18n';
+import { Titol } from '../components/Titol';
 import styles from '../styles/brand.module.css';
 
 export const P2Matricula: React.FC = () => {
@@ -25,7 +26,7 @@ export const P2Matricula: React.FC = () => {
 
   return (
     <section className={styles.pantalla}>
-      <h1 className={styles.titol}>{t('p2.titol')}</h1>
+      <Titol>{t('p2.titol')}</Titol>
       <form
         onSubmit={(e) => {
           e.preventDefault();
