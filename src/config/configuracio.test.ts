@@ -183,6 +183,29 @@ describe('resolConfig: validació de la configuració fusionada', () => {
   });
 });
 
+describe('captura automàtica (config.captura)', () => {
+  const avis = (json: string): ReturnType<typeof resolConfig> => resolConfig(JSON.parse(json));
+
+  it('les claus existeixen a la configuració per defecte', () => {
+    expect(CONFIG_PER_DEFECTE.captura).toEqual({ segonsEstableAbansCompte: 1, compteEnrere: 3 });
+  });
+
+  it('valors fora de rang tornen al valor per defecte amb avís', () => {
+    const r = avis('{"captura":{"segonsEstableAbansCompte":0,"compteEnrere":2.5}}');
+    expect(r.config.captura).toEqual(CONFIG_PER_DEFECTE.captura);
+    expect(r.avisos).toEqual([
+      { codi: 'capturaInvalida', camp: 'captura.segonsEstableAbansCompte' },
+      { codi: 'capturaInvalida', camp: 'captura.compteEnrere' }
+    ]);
+  });
+
+  it('valors vàlids s’accepten', () => {
+    const r = avis('{"captura":{"segonsEstableAbansCompte":2,"compteEnrere":5}}');
+    expect(r.avisos).toEqual([]);
+    expect(r.config.captura).toEqual({ segonsEstableAbansCompte: 2, compteEnrere: 5 });
+  });
+});
+
 describe('validacions', () => {
   it('validaRegex', () => {
     expect(validaRegex('^[0-9]+$')).toBe(true);

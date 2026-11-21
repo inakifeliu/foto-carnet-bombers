@@ -56,6 +56,7 @@ const MISSATGES_AVIS = {
   regexInvalida: "l'expressió regular no és vàlida",
   pppInvalid: 'la resolució (ppp) ha de ser 300 o 600',
   maxFotosInvalid: 'maxFotos ha de ser un enter entre 1 i 10',
+  capturaInvalida: 'segonsEstableAbansCompte ha de ser entre 0,1 i 10 i compteEnrere un enter entre 1 i 10',
   valorInvalid: 'el valor té un tipus no vàlid',
   campDesconegut: 'el camp no existeix a config.default.json',
   configInvalida: "la configuració no s'ha pogut llegir"

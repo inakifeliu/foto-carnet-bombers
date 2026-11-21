@@ -82,6 +82,7 @@ export type CodiAvis =
   | 'regexInvalida'
   | 'pppInvalid'
   | 'maxFotosInvalid'
+  | 'capturaInvalida'
   | 'valorInvalid'
   | 'campDesconegut'
   | 'configInvalida';
@@ -192,6 +193,18 @@ function aplicaRestriccions(config: IConfig, avisos: IAvis[]): IConfig {
   if (!Number.isInteger(config.maxFotos) || config.maxFotos < 1 || config.maxFotos > 10) {
     avisos.push({ codi: 'maxFotosInvalid', camp: 'maxFotos' });
     config.maxFotos = CONFIG_PER_DEFECTE.maxFotos;
+  }
+  if (config.captura.segonsEstableAbansCompte < 0.1 || config.captura.segonsEstableAbansCompte > 10) {
+    avisos.push({ codi: 'capturaInvalida', camp: 'captura.segonsEstableAbansCompte' });
+    config.captura.segonsEstableAbansCompte = CONFIG_PER_DEFECTE.captura.segonsEstableAbansCompte;
+  }
+  if (
+    !Number.isInteger(config.captura.compteEnrere) ||
+    config.captura.compteEnrere < 1 ||
+    config.captura.compteEnrere > 10
+  ) {
+    avisos.push({ codi: 'capturaInvalida', camp: 'captura.compteEnrere' });
+    config.captura.compteEnrere = CONFIG_PER_DEFECTE.captura.compteEnrere;
   }
   if (config.sortida.enquadrament !== 'visor' && config.sortida.enquadrament !== 'cap') {
     avisos.push({ codi: 'valorInvalid', camp: 'sortida.enquadrament' });
