@@ -58,7 +58,10 @@ export const P4Seleccio: React.FC = () => {
               </Miniatura>
               <Boto
                 onClick={() => {
-                  dispatch({ tipus: 'TRIA_FOTO', index: i });
+                  // RF-09: la triada és l'única que es manté; les altres s'alliberen immediatament. Amb una sola
+                  // foto a la llista, el seu índex passa a ser 0 (també en tornar enrere des de P5).
+                  alliberaFotos(foto.id);
+                  dispatch({ tipus: 'TRIA_FOTO', index: 0 });
                   dispatch({ tipus: 'ENDAVANT' });
                 }}
               >

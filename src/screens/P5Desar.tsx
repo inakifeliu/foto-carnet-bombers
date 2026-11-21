@@ -8,7 +8,7 @@ import { t } from '../i18n';
 import styles from '../styles/brand.module.css';
 
 export const P5Desar: React.FC = () => {
-  const { estat, config, fotos, dispatch, alliberaFotos } = useApp();
+  const { estat, config, fotos, dispatch } = useApp();
   const [desant, setDesant] = React.useState<boolean>(false);
   const [error, setError] = React.useState<boolean>(false);
   const foto = fotos[estat.fotoTriada];
@@ -27,9 +27,6 @@ export const P5Desar: React.FC = () => {
         if (r.tipus === 'ok') {
           recordaHandleDesat(r.handle);
           dispatch({ tipus: 'DESAT', desti: r.desti, nom: r.nom });
-          // RF-09: només es manté la foto triada.
-          alliberaFotos(foto.id);
-          dispatch({ tipus: 'TRIA_FOTO', index: 0 });
           dispatch({ tipus: 'ENDAVANT' });
         } else if (r.tipus === 'error') {
           setError(true);

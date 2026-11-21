@@ -127,3 +127,46 @@ describe('P4: puntuació real i avisos', () => {
     await act(async () => root.unmount());
   });
 });
+
+describe('P4: alliberament de fotos (RF-09, RF-16)', () => {
+  const botons = (div: HTMLElement, text: string): HTMLButtonElement[] =>
+    Array.from(div.querySelectorAll('button')).filter((b) => b.textContent === text);
+
+  it('«Triar aquesta» allibera immediatament les altres fotos i manté només la triada', async () => {
+    const fotos = [foto(1, 50), foto(2, 80), foto(3, 60)];
+    const { div, root } = await monta(fotos);
+    await act(async () => botons(div, t('p4.triar'))[0].click());
+    expect(div.querySelector('h1')?.textContent).toBe(t('p5.titol'));
+    const revocades = (URL.revokeObjectURL as jest.Mock).mock.calls.map((c) => c[0]);
+    expect(revocades).toEqual(expect.arrayContaining(['blob:foto-2', 'blob:foto-3']));
+    expect(revocades).not.toContain('blob:foto-1');
+    expect(fotos[1].canvas.width).toBe(0);
+    expect(fotos[2].canvas.width).toBe(0);
+    expect(fotos[0].canvas.width).not.toBe(0);
+    expect(div.querySelector('main img')?.getAttribute('src')).toBe('blob:foto-1');
+    await act(async () => root.unmount());
+  });
+
+  it('en tornar enrere des de P5 només queda la foto triada (coherent amb l’alliberament)', async () => {
+    const { div, root } = await monta([foto(1, 50), foto(2, 80)]);
+    await act(async () => botons(div, t('p4.triar'))[1].click());
+    await act(async () => botons(div, t('nav.enrere'))[0].click());
+    expect(div.querySelector('h1')?.textContent).toBe(t('p4.titol'));
+    const items = div.querySelectorAll('main li.fotoItem');
+    expect(items).toHaveLength(1);
+    expect(items[0].querySelector('img')?.getAttribute('src')).toBe('blob:foto-2');
+    await act(async () => root.unmount());
+  });
+
+  it('«Repetir les fotos» allibera totes les fotos i torna a P3', async () => {
+    const fotos = [foto(1, 50), foto(2, 80)];
+    const { div, root } = await monta(fotos);
+    await act(async () => botons(div, t('p4.repetir'))[0].click());
+    expect(div.querySelector('h1')?.textContent).toBe(t('p3.titol'));
+    const revocades = (URL.revokeObjectURL as jest.Mock).mock.calls.map((c) => c[0]);
+    expect(revocades).toEqual(expect.arrayContaining(['blob:foto-1', 'blob:foto-2']));
+    expect(fotos.every((f) => f.canvas.width === 0)).toBe(true);
+    expect(div.textContent).toContain(t('p3.comptador', { n: 1, max: 3 }));
+    await act(async () => root.unmount());
+  });
+});
