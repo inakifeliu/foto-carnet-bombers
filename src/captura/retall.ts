@@ -100,16 +100,9 @@ function context2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
   return ctx;
 }
 
-/**
- * Retalla `origen` (un fotograma sense mirall) al rectangle centrat 35:45 i el reescala a la mida de sortida
- * segons `ppp`, amb reducció per passos i `imageSmoothingQuality = 'high'`. No modifica `origen`.
- * Només retall i reescalat: cap retoc (RF-07).
- */
-export function retallaCentrat(origen: HTMLCanvasElement, opcions: IOpcionsRetall): HTMLCanvasElement {
-  const rect = rectangleRetallCentrat(origen.width, origen.height, opcions.factor ?? 1);
-  const sortida = midaSortida(opcions.ppp);
+/** Reducció per passos del rectangle `rect` de `origen` fins a la mida de sortida (qualitat alta). */
+function reduccioPerPassos(origen: HTMLCanvasElement, rect: IRectangle, sortida: IMida): HTMLCanvasElement {
   const passos = pasosReduccio({ w: rect.w, h: rect.h }, sortida);
-
   let font: HTMLCanvasElement = origen;
   let sx = rect.x;
   let sy = rect.y;
@@ -131,4 +124,38 @@ export function retallaCentrat(origen: HTMLCanvasElement, opcions: IOpcionsRetal
     sh = h;
   }
   return font;
+}
+
+/**
+ * Retalla `origen` (un fotograma sense mirall) al rectangle centrat 35:45 i el reescala a la mida de sortida
+ * segons `ppp`, amb reducció per passos i `imageSmoothingQuality = 'high'`. No modifica `origen`.
+ * Només retall i reescalat: cap retoc (RF-07).
+ */
+export function retallaCentrat(origen: HTMLCanvasElement, opcions: IOpcionsRetall): HTMLCanvasElement {
+  const rect = rectangleRetallCentrat(origen.width, origen.height, opcions.factor ?? 1);
+  return reduccioPerPassos(origen, rect, midaSortida(opcions.ppp));
+}
+
+/**
+ * Retalla `origen` a un rectangle QUALSEVOL (RF-07, retall intel·ligent) i el reescala a la mida de sortida. Si el
+ * rectangle sobresurt del fotograma, la part de fora queda BLANCA (neutra: és el color de fons oficial); la resta
+ * de píxels no es toquen. No modifica `origen`.
+ */
+export function retallaRectangle(origen: HTMLCanvasElement, rect: IRectangle, ppp: number): HTMLCanvasElement {
+  const dins = rect.x >= 0 && rect.y >= 0 && rect.x + rect.w <= origen.width && rect.y + rect.h <= origen.height;
+  const sortida = midaSortida(ppp);
+  if (dins) {
+    return reduccioPerPassos(origen, rect, sortida);
+  }
+  const base = creaCanvas(rect.w, rect.h);
+  const ctx = context2d(base);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, rect.w, rect.h);
+  ctx.drawImage(origen, -rect.x, -rect.y);
+  const resultat = reduccioPerPassos(base, { x: 0, y: 0, w: rect.w, h: rect.h }, sortida);
+  if (resultat !== base) {
+    base.width = 0;
+    base.height = 0;
+  }
+  return resultat;
 }
