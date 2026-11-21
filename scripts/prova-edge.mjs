@@ -1,12 +1,19 @@
 /**
- * Prova manual reproduïble de la Fase 1: obre el HTML compilat a Microsoft Edge (headless, càmera simulada) i
- * recorre P0 → P7 pilotant-lo pel protocol de depuració (CDP). Comprova també la CSP i que no hi ha cap petició
+ * Prova manual reproduïble (Fases 1 i 2): obre el HTML compilat a Microsoft Edge (headless, càmera simulada) i
+ * recorre P0 → P7 pilotant-lo pel protocol de depuració (CDP). Fase 2: comprova que MediaPipe carrega a P3 amb la
+ * CSP, que el bucle d'anàlisi corre a ≥ 10 fps, els semàfors, la confirmació de la captura manual, la puntuació
+ * real a P4 i el JSON del mode diagnòstic (sense imatge). Comprova també la CSP i que no hi ha cap petició
  * externa. NO forma part de `npm test` (necessita Edge i un build previ).
  *
- * Ús:   npm run build && npm run prova-edge [-- [fitxer.html] [--jpeg sortida.jpg] [--visible]]
+ * La càmera simulada de Chromium és un patró sintètic SENSE cara: els semàfors han de dir «No et veiem la cara».
+ * Per provar amb una cara real, passa un vídeo (`--video fitxer.y4m` o `.mjpeg`; Chromium l'accepta com a càmera
+ * simulada): llavors no s'exigeix el missatge de «sense cara» i es mostren els valors dels controls.
+ *
+ * Ús:   npm run build && npm run prova-edge [-- [fitxer.html] [--jpeg sortida.jpg] [--video cara.y4m] [--visible]]
  *
  *   fitxer.html     HTML a provar (per defecte, el més recent de dist/).
  *   --jpeg ruta     desa el JPEG que l'app genera (per inspeccionar-lo a mà).
+ *   --video ruta    fitxer .y4m/.mjpeg com a càmera simulada (per exemple, amb una cara).
  *   --visible       obre Edge amb finestra en lloc de headless.
  * Variable d'entorn EDGE_PATH: ruta a msedge.exe si no és a cap de les ubicacions habituals.
  */
@@ -74,7 +81,9 @@ const args = process.argv.slice(2);
 const visible = args.includes('--visible');
 const iJpeg = args.indexOf('--jpeg');
 const rutaJpeg = iJpeg >= 0 ? path.resolve(args[iJpeg + 1] ?? 'prova.jpg') : undefined;
-const posicionals = args.filter((a, i) => !a.startsWith('--') && i !== iJpeg + 1);
+const iVideo = args.indexOf('--video');
+const rutaVideo = iVideo >= 0 ? path.resolve(args[iVideo + 1] ?? '') : undefined;
+const posicionals = args.filter((a, i) => !a.startsWith('--') && i !== iJpeg + 1 && i !== iVideo + 1);
 const html = triaHtml(posicionals[0]);
 const edgeExe = trobaEdge();
 const port = await portLliure();
@@ -90,8 +99,10 @@ const edge = spawn(
     `--user-data-dir=${perfil}`,
     '--no-first-run',
     '--no-default-browser-check',
+    '--disable-gpu',
     '--use-fake-ui-for-media-stream',
     '--use-fake-device-for-media-stream=device-count=2',
+    ...(rutaVideo ? [`--use-file-for-fake-video-capture=${rutaVideo}`] : []),
     'about:blank'
   ],
   { stdio: 'ignore' }
@@ -104,6 +115,7 @@ const ok = (nom, cond, detall = '') => {
   console.log((cond ? 'OK     ' : 'FALLA  ') + nom + (detall ? ' -> ' + detall : ''));
 };
 
+const consola = [];
 let ws;
 try {
   let objectius = [];
@@ -125,7 +137,6 @@ try {
   let id = 0;
   const pendents = new Map();
   const peticions = [];
-  const consola = [];
   ws.onmessage = (m) => {
     const d = JSON.parse(m.data);
     if (d.id && pendents.has(d.id)) {
@@ -194,6 +205,24 @@ try {
     }
     return false;
   };
+  /** «Fer la foto ara»; si l'app demana confirmació (controls no verds), prem «Fer-la igualment». */
+  const fesFoto = async () => {
+    await clic('Fer la foto ara');
+    await dorm(400);
+    await clic('Fer-la igualment');
+    await dorm(1200);
+  };
+  /** Espera que MediaPipe hagi carregat a P3 (apareixen els semàfors) o que hi hagi un error de càrrega. */
+  const esperaModels = async () => {
+    for (let i = 0; i < 120; i++) {
+      const estat = await ev(
+        `document.querySelector('[data-semafors]') ? 'llest' : document.querySelector('[data-error-models]') ? 'error' : 'carregant'`
+      );
+      if (estat !== 'carregant') return estat;
+      await dorm(500);
+    }
+    return 'temps';
+  };
   const arribaACaptura = async (matricula) => {
     await clic('Començar');
     await dorm(300);
@@ -238,6 +267,93 @@ try {
       false
   );
 
+  // --- Fase 2: MediaPipe, bucle d'anàlisi, semàfors i mode diagnòstic ---------------------------------------
+  const t0Models = Date.now();
+  const estatModels = await esperaModels();
+  ok(
+    'P3: MediaPipe carrega amb la CSP (semàfors visibles)',
+    estatModels === 'llest',
+    `${estatModels} (${Date.now() - t0Models} ms)`
+  );
+  ok(
+    'P3: cap <script src="blob:…"> deixat al DOM',
+    (await ev(`document.querySelectorAll('script[src^="blob:"]').length`)) === 0
+  );
+  ok('P3: 11 semàfors (RF-05)', (await ev(`document.querySelectorAll('[data-semafors] li').length`)) === 11);
+  await dorm(3000);
+  // Mode diagnòstic amb Ctrl+Alt+D (RF-18): valors en directe, superposició i rendiment.
+  await ev(
+    `window.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', ctrlKey: true, altKey: true, bubbles: true }))`
+  );
+  // El primer fotograma amb SwiftShader pot trigar (compilació de shaders): s'espera un rendiment estable.
+  for (let i = 0; i < 30; i++) {
+    const r = await ev(`document.querySelector('#debug-rendiment')?.textContent ?? ''`);
+    if (Number(/anàlisi ([0-9.]+) fps/.exec(r)?.[1] ?? 0) >= 5) break;
+    await dorm(1000);
+  }
+  await dorm(1500);
+  const rendiment = await ev(`document.querySelector('#debug-rendiment')?.textContent ?? ''`);
+  console.log('   ' + rendiment);
+  const fps = Number(/anàlisi ([0-9.]+) fps/.exec(rendiment)?.[1] ?? 0);
+  const msFotograma = Number(/([0-9.]+) ms per fotograma/.exec(rendiment)?.[1] ?? 0);
+  // Edge headless va sense GPU (--disable-gpu, GL per programari): la mesura és un mínim respecte a la Surface.
+  ok("Diagnòstic: l'anàlisi corre a ≥ 10 fps", fps >= 9.5, `${fps} fps, ${msFotograma} ms/fotograma`);
+  ok('Diagnòstic: mostra el delegat (GPU o CPU)', /delegat (GPU|CPU)/.test(rendiment), rendiment);
+  const controls = await ev(`[...document.querySelectorAll('#debug-controls li')].map(li => li.textContent)`);
+  ok('Diagnòstic: valors en directe dels 11 controls', controls.length === 11, controls.join(' | '));
+  console.log('   ' + (await ev(`document.querySelector('#debug-mesures')?.textContent ?? ''`)));
+  ok(
+    'Diagnòstic: superposició (canvas) sobre el vídeo',
+    (await ev(`!!document.querySelector('[data-overlay-diagnostic]')`)) === true
+  );
+  const guiaTxt = await ev(`document.querySelector('[role="status"][aria-live]')?.textContent ?? ''`);
+  if (!rutaVideo) {
+    ok(
+      'P3: el missatge principal és «No et veiem la cara» (patró sintètic, sense cara)',
+      guiaTxt === 'No et veiem la cara',
+      guiaTxt
+    );
+    const estatsSem = await ev(
+      `[...document.querySelectorAll('[data-semafors] li')].map(li => li.querySelector('strong')?.textContent)`
+    );
+    ok(
+      'P3: semàfor de la cara en «Cal corregir» i la resta «Sense dades»',
+      estatsSem[0] === 'Cal corregir' && estatsSem.slice(1).every((x) => x === 'Sense dades'),
+      estatsSem.join(',')
+    );
+  } else {
+    console.log(`   (vídeo propi: no s'exigeix «sense cara»; missatge principal: ${guiaTxt})`);
+  }
+  // JSON de diagnòstic: s'intercepta el <a download> (mateix camí de codi que la baixada real).
+  await ev(`(() => {
+    window.__jsonDiag = null;
+    const clic = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function () {
+      if (this.download.startsWith('diagnostic-')) { window.__jsonDiag = fetch(this.href).then((r) => r.text()); return; }
+      return clic.call(this);
+    };
+  })()`);
+  await ev(`document.querySelector('#debug-descarrega').click()`);
+  await dorm(500);
+  const jsonText = await ev(`window.__jsonDiag`);
+  let diag;
+  try {
+    diag = JSON.parse(jsonText);
+  } catch {
+    diag = undefined;
+  }
+  ok(
+    'Diagnòstic: JSON generat amb versió, controls i configuració',
+    !!diag && !!diag.versio && Object.keys(diag.controls).length === 11 && !!diag.config?.llindars,
+    diag && diag.versio
+  );
+  ok(
+    'Diagnòstic: el JSON no porta cap imatge ni la matrícula',
+    !!jsonText && !/data:image|blob:|base64|landmarks|"mascara"\s*:|12345/.test(jsonText),
+    jsonText && `${jsonText.length} bytes`
+  );
+  // El mode diagnòstic es deixa activat: no afecta la resta de la prova.
+
   const info = await ev(
     `(() => { const v = document.querySelector('video'); return { w: v.videoWidth, h: v.videoHeight, pistes: v.srcObject ? v.srcObject.getVideoTracks().map(t => t.readyState) : null, transform: getComputedStyle(v).transform, opcions: document.querySelectorAll('#fc-camera option').length, aria: document.querySelector('[role="status"][aria-live]')?.hasAttribute('aria-label') }; })()`
   );
@@ -271,6 +387,25 @@ try {
 
   // Captura manual ×2
   ok('clic «Fer la foto ara»', (await clic('Fer la foto ara')) === 'ok');
+  await dorm(500);
+  const dialeg = await ev(`document.querySelector('[role="dialog"]')?.textContent ?? ''`);
+  if (rutaVideo) {
+    console.log(
+      `   (vídeo propi: diàleg de confirmació ${dialeg ? 'mostrat' : 'no mostrat, tots els controls verds'})`
+    );
+  } else {
+    ok(
+      'P3: la captura manual demana confirmació (controls no verds)',
+      dialeg.includes('Hi ha aspectes a millorar. Vols fer-la igualment?'),
+      dialeg
+    );
+    await clic('Millorar-ho primer');
+    await dorm(300);
+    ok('P3: «Millorar-ho primer» no fa cap foto', (await ev(`document.querySelectorAll('main ul img').length`)) === 0);
+    await clic('Fer la foto ara');
+    await dorm(400);
+  }
+  await clic('Fer-la igualment');
   await dorm(1200);
   const rev = await ev(
     `({ miniatures: document.querySelectorAll('main ul img').length, botons: [...document.querySelectorAll('button')].map(b => b.textContent), focus: document.activeElement?.textContent })`
@@ -284,8 +419,7 @@ try {
   await clic('Fer-ne una altra');
   await dorm(300);
   await esperaVideo();
-  await clic('Fer la foto ara');
-  await dorm(1200);
+  await fesFoto();
   ok('P3: 2 miniatures', (await ev(`document.querySelectorAll('main ul img').length`)) === 2);
   await clic('Ja en tinc prou');
   await dorm(500);
@@ -294,6 +428,19 @@ try {
     `[...document.querySelectorAll('main ul img')].map(i => i.naturalWidth + 'x' + i.naturalHeight)`
   );
   ok('P4: 2 fotos retallades a 413x531', mides.length === 2 && mides.every((m) => m === '413x531'), mides.join(','));
+  const p4 = await ev(`document.querySelector('main').textContent`);
+  const puntuacions = p4.match(/Puntuació: \d+ \/ 100/g) ?? [];
+  ok(
+    'P4: puntuació real (0-100) a cada foto, no simulada',
+    puntuacions.length === 2 && !/simulad/i.test(p4),
+    puntuacions.join(' ; ')
+  );
+  console.log(
+    '   avisos P4: ' +
+      (await ev(
+        `[...document.querySelectorAll('[data-avisos-foto]')].map(u => [...u.querySelectorAll('li')].map(l => l.textContent).join(' / ')).join(' || ')`
+      ))
+  );
   await clic('Triar aquesta');
   await dorm(500);
   ok('P5', (await h1()) === 'Desa la foto', await h1());
@@ -363,8 +510,7 @@ try {
 
   // Segon recorregut: cancel·lació, SecurityError (Baixades) i nom canviat al diàleg.
   await arribaACaptura('54321');
-  await clic('Fer la foto ara');
-  await dorm(1200);
+  await fesFoto();
   await clic('Ja en tinc prou');
   await dorm(400);
   await clic('Triar aquesta');
@@ -400,8 +546,7 @@ try {
   ok('pageshow persistit: torna a P0', (await h1()) === 'Foto de carnet amb uniforme');
 
   await arribaACaptura('11111');
-  await clic('Fer la foto ara');
-  await dorm(1200);
+  await fesFoto();
   await clic('Ja en tinc prou');
   await dorm(400);
   await clic('Triar aquesta');
@@ -422,10 +567,15 @@ try {
   const externes = peticions.filter((u) => !/^(file|blob|data|about):/.test(u));
   ok('0 peticions externes', externes.length === 0, JSON.stringify(externes));
   console.log('   total de peticions (locals):', peticions.length);
-  const errs = consola.filter((c) => /error|EXCEPCIO|csp|Content Security/i.test(c));
+  if (process.env.PROVA_CONSOLA) console.log(consola.join('\n'));
+  // MediaPipe escriu missatges informatius (INFO, W<data> ...) pel canal d'error de la consola: no són errors.
+  const errs = consola
+    .filter((c) => !/INFO: |^warning: Wd{4} |OpenGL error checking is disabled/.test(c))
+    .filter((c) => /error|EXCEPCIO|csp|Content Security/i.test(c));
   ok('Cap error ni excepció a la consola', errs.length === 0, JSON.stringify(errs));
 } catch (e) {
   console.error('EXCEPCIÓ DE LA PROVA:', e);
+  console.error(['Consola de la pàgina (últimes 15 línies):', ...consola.slice(-15)].join('\n  '));
   resultats.push({ nom: 'prova', ok: false });
 } finally {
   try {
