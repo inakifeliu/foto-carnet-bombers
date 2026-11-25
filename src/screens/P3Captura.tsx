@@ -261,6 +261,11 @@ export const P3Captura: React.FC = () => {
       <p className={styles.nota} data-nota-p3="">
         {t(analisiDisponible ? 'p3.nota' : 'p3.notaSenseAnalisi')}
       </p>
+      {camera.flux !== undefined && (
+        <p className={styles.text} data-consell-camera={camera.mirall ? 'selfie' : 'posterior'}>
+          {t(camera.mirall ? 'p3.consellSelfie' : 'p3.consellPosterior')}
+        </p>
+      )}
 
       {camera.error && (
         <div role="alert" className={styles.error}>
@@ -298,8 +303,9 @@ export const P3Captura: React.FC = () => {
       )}
 
       <div className={styles.captura}>
-        <div className={styles.visor}>
-          {/* El mirall és només CSS (transform) a la visualització; el canvas de captura no el té. */}
+        <div className={camera.mirall ? styles.visor : `${styles.visor} ${styles.visorSenseMirall}`}>
+          {/* El mirall és només CSS (transform) a la visualització i només amb la càmera frontal o la webcam;
+              el canvas de captura no el té mai. Amb la càmera posterior es veu l'escena tal com és. */}
           <video
             ref={video}
             className={styles.video}
@@ -384,7 +390,7 @@ export const P3Captura: React.FC = () => {
         </div>
       </div>
 
-      <div className={styles.accions}>
+      <div className={`${styles.accions} ${styles.accionsCaptura}`}>
         <Boto variant="secundari" onClick={() => dispatch({ tipus: 'ENRERE' })} disabled={ocupat}>
           {t('nav.enrere')}
         </Boto>

@@ -72,6 +72,8 @@ describe('RF-19: context incorrecte', () => {
   });
 
   it("el missatge és el que es dona a l'usuari", () => {
-    expect(t('rf19.missatge')).toBe("Descarrega aquest fitxer a l'ordinador i obre'l amb Microsoft Edge.");
+    expect(t('rf19.missatge')).toBe(
+      'Obre aquesta pàgina directament al navegador (Edge, Chrome o Safari), no dins una vista prèvia.'
+    );
   });
 });

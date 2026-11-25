@@ -4,7 +4,8 @@ import {
   classificaErrorCamera,
   llistaCameres,
   resolucioInsuficient,
-  restriccionsCamera
+  restriccionsCamera,
+  visualitzacioEnMirall
 } from './camera';
 import { t } from '../i18n';
 
@@ -43,9 +44,9 @@ describe('classificaErrorCamera', () => {
 });
 
 describe('restriccionsCamera', () => {
-  it('per defecte: ideal 1920×1080 i facingMode user (RF-01)', () => {
+  it('per defecte: ideal 1920×1080 i facingMode environment ideal (RF-01)', () => {
     expect(restriccionsCamera()).toEqual({
-      video: { width: { ideal: 1920 }, height: { ideal: 1080 }, facingMode: 'user' },
+      video: { width: { ideal: 1920 }, height: { ideal: 1080 }, facingMode: { ideal: 'environment' } },
       audio: false
     });
   });
@@ -54,6 +55,14 @@ describe('restriccionsCamera', () => {
       video: { width: { ideal: 1920 }, height: { ideal: 1080 }, deviceId: { exact: 'abc' } },
       audio: false
     });
+  });
+});
+
+describe('visualitzacioEnMirall', () => {
+  it('mirall amb la càmera frontal o desconeguda; sense mirall amb la posterior', () => {
+    expect(visualitzacioEnMirall('user')).toBe(true);
+    expect(visualitzacioEnMirall(undefined)).toBe(true);
+    expect(visualitzacioEnMirall('environment')).toBe(false);
   });
 });
 

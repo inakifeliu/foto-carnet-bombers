@@ -47,11 +47,16 @@ export function classificaErrorCamera(error: unknown): TipusErrorCamera {
   }
 }
 
-/** Restriccions de RF-01. Amb `deviceId` s'obre aquella càmera concreta (sense `facingMode`). */
+/**
+ * Restriccions de RF-01. Per defecte es demana la càmera **posterior** (`facingMode: { ideal: 'environment' }`): al mòbil
+ * és la principal i la de més qualitat, i és preferible que la foto la faci una segona persona. És `ideal`, no `exact`:
+ * en un ordinador amb una sola webcam s'obre igualment aquella. Amb `deviceId` s'obre aquella càmera concreta (sense
+ * `facingMode`).
+ */
 export function restriccionsCamera(deviceId?: string): MediaStreamConstraints {
   const base = { width: { ideal: 1920 }, height: { ideal: 1080 } };
   return {
-    video: deviceId ? { ...base, deviceId: { exact: deviceId } } : { ...base, facingMode: 'user' },
+    video: deviceId ? { ...base, deviceId: { exact: deviceId } } : { ...base, facingMode: { ideal: 'environment' } },
     audio: false
   };
 }
@@ -82,4 +87,12 @@ export async function llistaCameres(
 /** Atura totes les pistes d'un flux. */
 export function aturaFlux(flux: MediaStream | undefined | null): void {
   flux?.getTracks().forEach((pista) => pista.stop());
+}
+
+/**
+ * La visualització es mostra en mirall (com un mirall de bany) només amb una càmera frontal o desconeguda (webcam
+ * d'ordinador). Amb la càmera posterior (`facingMode: 'environment'`) la persona que fa la foto veu l'escena tal com és.
+ */
+export function visualitzacioEnMirall(facingMode: string | undefined): boolean {
+  return facingMode !== 'environment';
 }

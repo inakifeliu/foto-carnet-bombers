@@ -8,6 +8,15 @@ Aplicació en **un únic fitxer HTML autònom** perquè els bombers del SPCPEIS 
 - **Estat (v0.2.0)**: les Fases 0-3 estan provades al Surface i fusionades a `main`. La **Fase 4 (acabats)** és implementada a la branca `html-autonom/fase-4` i està **pendent de prova manual** amb el guió. Queden la Fase 5 (calibratge amb cares reals, Forms i flux de Power Automate, pilot).
 - La branca `fase-0/viabilitat-esquelet` conté la versió anterior com a web part SPFx (v0.2 de l'especificació). És només un arxiu: no es fusiona.
 
+## Publicació a GitHub Pages (prova amb mòbil)
+
+Per fer servir la càmera el navegador exigeix un context segur (HTTPS). El workflow `.github/workflows/pages.yml` passa els tests, compila el mateix HTML autònom (`npm run build`) i el publica com a `index.html` a GitHub Pages a cada push a `main` (o a mà des d'Actions → «GitHub Pages» → *Run workflow*).
+
+- Cal activar-ho una sola vegada: **Settings → Pages → Build and deployment → Source: «GitHub Actions»**.
+- L'adreça serà `https://<usuari>.github.io/foto-carnet-bombers/`.
+- La pàgina no carrega res extern i la CSP bloqueja qualsevol connexió: la foto es fa i es processa dins el dispositiu i no surt enlloc fins que l'usuari la puja manualment al formulari.
+- Al mòbil es demana per defecte la **càmera posterior** (`facingMode: { ideal: 'environment' }`), sense mirall a la visualització; amb la webcam o la càmera frontal es manté el mirall. L'app recomana que la foto la faci una segona persona.
+
 ## Requisits
 
 - **Node 22 o superior** i npm (només per compilar; l'usuari final no necessita res més que Edge).

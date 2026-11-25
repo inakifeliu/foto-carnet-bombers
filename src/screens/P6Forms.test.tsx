@@ -88,8 +88,10 @@ describe('P6: avís sense connexió', () => {
 });
 
 describe('P0: privacitat', () => {
-  it('el text de P0 diu que l’aplicació funciona tota dins l’ordinador', () => {
-    expect(t('p0.privacitat')).toContain('dins el teu ordinador');
+  it('el text de P0 diu que la imatge no surt del dispositiu fins que l’usuari la puja manualment al formulari', () => {
+    expect(t('p0.privacitatTitol')).toContain('no surt del teu dispositiu');
+    expect(t('p0.privacitat')).toContain('manualment mitjançant el formulari');
+    expect(t('p0.privacitat')).toContain('dins el teu dispositiu');
   });
 });
 

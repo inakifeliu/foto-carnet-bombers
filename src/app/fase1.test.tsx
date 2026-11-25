@@ -107,12 +107,38 @@ describe('P3: errors de càmera', () => {
 });
 
 /** Flux simulat amb una pista de vídeo; `stop` s'espia per comprovar que s'atura. */
-function fluxSimulat(deviceId: string, stop = jest.fn()): MediaStream {
-  const pista = { stop, getSettings: () => ({ width: 640, height: 480, deviceId }), addEventListener: jest.fn() };
+function fluxSimulat(deviceId: string, stop = jest.fn(), facingMode?: string): MediaStream {
+  const pista = {
+    stop,
+    getSettings: () => ({ width: 640, height: 480, deviceId, facingMode }),
+    addEventListener: jest.fn()
+  };
   return { getTracks: () => [pista], getVideoTracks: () => [pista] } as unknown as MediaStream;
 }
 
 describe('P3: càmera activa', () => {
+  it('amb la càmera posterior no hi ha mirall i les indicacions són per a la persona fotografiada', async () => {
+    posaMediaDevices(jest.fn().mockResolvedValue(fluxSimulat('p', jest.fn(), 'environment')));
+    const { div, root } = monta(3);
+    await act(async () => {});
+    const consell = div.querySelector('[data-consell-camera]');
+    expect(consell?.getAttribute('data-consell-camera')).toBe('posterior');
+    expect(consell?.textContent).toBe(t('p3.consellPosterior'));
+    expect(div.querySelector('video')?.parentElement?.className).toContain('visorSenseMirall');
+    await act(async () => root.unmount());
+    div.remove();
+  });
+
+  it('amb la webcam o la càmera frontal es manté el mirall i es recomana la càmera principal', async () => {
+    posaMediaDevices(jest.fn().mockResolvedValue(fluxSimulat('w')));
+    const { div, root } = monta(3);
+    await act(async () => {});
+    expect(div.querySelector('[data-consell-camera]')?.getAttribute('data-consell-camera')).toBe('selfie');
+    expect(div.querySelector('video')?.parentElement?.className).not.toContain('visorSenseMirall');
+    await act(async () => root.unmount());
+    div.remove();
+  });
+
   it('demana les restriccions de RF-01, mostra el selector amb diverses càmeres i atura les pistes en sortir', async () => {
     const stopA = jest.fn();
     const stopB = jest.fn();
@@ -128,7 +154,7 @@ describe('P3: càmera activa', () => {
     const { div, root } = monta(3);
     await act(async () => {});
     expect(getUserMedia).toHaveBeenCalledWith({
-      video: { width: { ideal: 1920 }, height: { ideal: 1080 }, facingMode: 'user' },
+      video: { width: { ideal: 1920 }, height: { ideal: 1080 }, facingMode: { ideal: 'environment' } },
       audio: false
     });
     expect(div.querySelectorAll('#fc-camera option')).toHaveLength(2);
