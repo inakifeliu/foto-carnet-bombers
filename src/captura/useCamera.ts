@@ -8,7 +8,8 @@ import {
   resolucioInsuficient,
   restriccionsCamera,
   type ICamera,
-  type TipusErrorCamera
+  type TipusErrorCamera,
+  visualitzacioEnMirall
 } from './camera';
 
 export interface IEstatCamera {
@@ -20,6 +21,8 @@ export interface IEstatCamera {
   deviceIdActual: string | undefined;
   /** Resolució real quan és inferior a 1280×720 (avís no bloquejant). */
   resolucioBaixa: { ample: number; alt: number } | undefined;
+  /** false amb la càmera posterior (`facingMode: 'environment'`): la visualització no es mostra en mirall. */
+  mirall: boolean;
   canviaCamera: (deviceId: string) => void;
   reintenta: () => void;
 }
@@ -35,6 +38,7 @@ export function useCamera(): IEstatCamera {
   const [cameres, setCameres] = React.useState<ICamera[]>([]);
   const [deviceIdActual, setDeviceIdActual] = React.useState<string | undefined>(undefined);
   const [resolucioBaixa, setResolucioBaixa] = React.useState<IEstatCamera['resolucioBaixa']>(undefined);
+  const [mirall, setMirall] = React.useState<boolean>(true);
   // Cada petició té un número: si en arriba una de més nova, la resposta antiga s'atura i s'ignora.
   const peticio = React.useRef(0);
   const fluxActual = React.useRef<MediaStream | undefined>(undefined);
@@ -71,6 +75,7 @@ export function useCamera(): IEstatCamera {
       const pista = nou.getVideoTracks()[0];
       const config = pista?.getSettings?.() ?? {};
       setDeviceIdActual(config.deviceId ?? demanat);
+      setMirall(visualitzacioEnMirall(config.facingMode));
       const ample = config.width ?? 0;
       const alt = config.height ?? 0;
       setResolucioBaixa(ample > 0 && alt > 0 && resolucioInsuficient(ample, alt) ? { ample, alt } : undefined);
@@ -115,5 +120,5 @@ export function useCamera(): IEstatCamera {
   const canviaCamera = React.useCallback((deviceId: string): void => setDemanat(deviceId), []);
   const reintenta = React.useCallback((): void => setIntents((n) => n + 1), []);
 
-  return { flux, carregant, error, cameres, deviceIdActual, resolucioBaixa, canviaCamera, reintenta };
+  return { flux, carregant, error, cameres, deviceIdActual, resolucioBaixa, mirall, canviaCamera, reintenta };
 }

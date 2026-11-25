@@ -141,6 +141,27 @@
   margin-top: 32px;
 }
 
+.privacitat {
+  margin: 0 0 24px;
+  padding: 16px 20px;
+  border: 2px solid var(--color-ok);
+  border-left-width: 8px;
+  border-radius: 4px;
+  background: var(--bcn-blanc);
+}
+
+.privacitatTitol {
+  margin: 0 0 8px;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--color-ok-text);
+}
+
+.privacitatText {
+  margin: 0;
+}
+
 .logosBenvinguda {
   display: flex;
   align-items: center;
@@ -319,7 +340,8 @@
   flex: 0 1 420px;
   aspect-ratio: 35 / 45;
   width: 100%;
-  max-width: 420px;
+  /* En horitzontal (mòbil girat, portàtil petit) el visor no pot ser més alt que el 70 % de la pantalla. */
+  max-width: min(420px, calc(70vh * 35 / 45));
   background: var(--color-gris-suau);
   border: 2px solid var(--color-vora);
 }
@@ -586,10 +608,129 @@
   font-size: 14px;
 }
 
-/* --- Finestres estretes (fins a ~360 px, sense scroll horitzontal) ---------- */
+/* Càmera posterior (mòbil en mans d'una altra persona): sense mirall, es veu l'escena tal com és. */
+.visorSenseMirall .video,
+.visorSenseMirall .overlay {
+  transform: none;
+}
+
+/* --- Finestres estretes i mòbils (fins a ~360 px, sense scroll horitzontal) --- */
 @media (max-width: 600px) {
+  .arrel {
+    font-size: 17px;
+  }
+
   .capcalera {
     padding: 4px 12px;
+  }
+
+  /* Logos més petits mantenint l'espai de protecció (>= 10 % de la mida). */
+  .logoSignatura {
+    padding: 10px 8px;
+  }
+
+  .imgSignatura {
+    height: 28px;
+  }
+
+  .logoEscut {
+    padding: 6px;
+  }
+
+  .imgEscut {
+    height: 44px;
+  }
+
+  .logosBenvinguda {
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .imgBenvinguda {
+    height: 64px;
+    margin: 7px;
+  }
+
+  .privacitat {
+    padding: 12px 14px;
+    border-left-width: 6px;
+  }
+
+  .privacitatTitol {
+    font-size: 19px;
+  }
+
+  /* Botons a tota l'amplada: més fàcils de tocar amb el dit. */
+  .accions {
+    gap: 12px;
+    margin-top: 24px;
+  }
+
+  .accions > * {
+    flex: 1 1 100%;
+  }
+
+  /* Captura al mòbil: els botons queden fixos a baix perquè qui fa la foto no hagi de desplaçar la pàgina. */
+  .accionsCaptura {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    margin: 16px -16px 0;
+    padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px));
+    gap: 8px;
+    background: var(--bcn-blanc);
+    border-top: 1px solid var(--color-vora);
+  }
+
+  .accionsCaptura > * {
+    flex: 1 1 auto;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .captura {
+    gap: 16px;
+  }
+
+  .visor {
+    flex-basis: 100%;
+    margin: 0 auto;
+  }
+
+  .panell {
+    flex-basis: 100%;
+  }
+
+  .semaforsPanell {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    column-gap: 12px;
+  }
+
+  .instruccio {
+    gap: 12px;
+  }
+
+  .iconaInstruccio {
+    width: 48px;
+    height: 48px;
+  }
+
+  .icona {
+    width: 36px;
+    height: 36px;
+  }
+
+  .fotos {
+    gap: 16px;
+  }
+
+  .fotoItem {
+    width: calc(50% - 8px);
+  }
+
+  .previa {
+    width: 100%;
+    max-width: 260px;
   }
 
   .peu {
@@ -597,15 +738,17 @@
   }
 
   .principal {
-    padding: 32px 16px;
+    padding: 20px 16px;
   }
 
   .titol {
-    font-size: 28px;
+    margin-bottom: 16px;
+    font-size: 26px;
   }
 
   .guia {
-    font-size: 24px;
+    padding: 12px 14px;
+    font-size: 22px;
   }
 
   .compteEnrere {
