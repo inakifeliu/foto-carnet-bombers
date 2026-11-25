@@ -10,7 +10,7 @@ Aplicació en **un únic fitxer HTML autònom** perquè els bombers del SPCPEIS 
 
 ## Publicació a GitHub Pages (prova amb mòbil)
 
-Per fer servir la càmera el navegador exigeix un context segur (HTTPS). El workflow `.github/workflows/pages.yml` passa els tests, compila el mateix HTML autònom (`npm run build`) i el publica com a `index.html` a GitHub Pages a cada push a `main` (o a mà des d'Actions → «GitHub Pages» → *Run workflow*).
+Per fer servir la càmera el navegador exigeix un context segur (HTTPS). El workflow `.github/workflows/pages.yml` passa els tests, compila el mateix HTML autònom (`npm run build`) i el publica com a `index.html` a GitHub Pages a cada push a `main` (o a mà des d'Actions → «GitHub Pages» → _Run workflow_).
 
 - Cal activar-ho una sola vegada: **Settings → Pages → Build and deployment → Source: «GitHub Actions»**.
 - L'adreça serà `https://<usuari>.github.io/foto-carnet-bombers/`.
