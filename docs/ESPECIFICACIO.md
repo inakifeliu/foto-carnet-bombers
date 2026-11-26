@@ -182,7 +182,7 @@ Tots els llindars són **configurables** a `config.json` i s'han de **calibrar**
 ### RF-07 Retall al format oficial
 - Proporció **35:45** (amplada:alçada).
 - **Mida de sortida** (`config.sortida.mida`):
-  - **`"original"` (per defecte, D18)**: la foto és el rectangle de retall a la seva mida en píxels, **sense reescalar** (resolució original de la càmera; amb 1920 × 1080 i enquadrament «visor», 840 × 1080 px). L'ample se'n dedueix de l'alçada (35:45 amb enters). Si el retall és més petit que el mínim `midaSortida(sortida.ppp)` (413 × 531 px a 300 ppp), s'amplia fins al mínim. `config.sortida.alcadaMaxPx` (per defecte 2160) limita les càmeres 4K o superiors: el retall més alt es redueix per passos, amb qualitat alta, a aquesta alçada mantenint 35:45.
+  - **`"original"` (per defecte, D18)**: la foto és el rectangle de retall a la seva mida en píxels, **sense reescalar** (resolució original de la càmera; amb 1920 × 1080 i enquadrament «visor», 840 × 1080 px). L'ample se'n dedueix de l'alçada (35:45 amb enters). Si el retall és més petit que el mínim `midaSortida(sortida.ppp)` (413 × 531 px a 300 ppp), s'amplia fins al mínim. `config.sortida.alcadaMaxPx` (per defecte 16384, el màxim admès: a la pràctica no es redueix mai, D19) permet limitar l'alçada: un retall més alt es redueix per passos, amb qualitat alta, a aquesta alçada mantenint 35:45. La càmera es demana a 3840 × 2160 (`ideal`), de manera que la foto té la resolució més alta que doni la càmera.
   - **`"fixa"`**: sempre `midaSortida(ppp)`: 413 × 531 px (300 ppp) o 827 × 1063 px (600 ppp).
 - **Enquadrament** (`config.sortida.enquadrament`):
   - **`"visor"` (per defecte)**: la foto final és **exactament el que es veu al visor de P3** (sense el mirall): el rectangle 35:45 més gran centrat al fotograma de la càmera (el mateix que mostra `object-fit: cover`, sigui quina sigui la proporció de la càmera), de manera que s'hi veuen cap, espatlles i part de l'uniforme. Decisió de l'usuari del 21/11/2026 després de provar-ho al Surface. El visor, la captura, els controls que depenen del retall (5.3, 5.6, 5.11) i el rectangle previst del mode diagnòstic fan servir la mateixa funció (`rectangleVisor`). El retall sempre és dins el fotograma: no hi ha avís «Massa a prop / a la vora» ni penalització. Silueta guia i llindars (5.3: 0,22–0,30; zona del tors de 5.10/5.11 més avall i més ampla) pensats per a aquest enquadrament; **a calibrar** amb fotos reals.
@@ -200,7 +200,7 @@ Tots els llindars són **configurables** a `config.json` i s'han de **calibrar**
 - `canvas.toBlob('image/jpeg', 0.92)`.
 - **Escriure la densitat a la capçalera JFIF** (APP0): unitats = 1 (ppp), X = Y = densitat perquè s'imprimeixi a 35 × 45 mm: amb `"original"`, `round(alçada / (45 / 25,4))` (p. ex. 1080 px → 610 ppp); amb `"fixa"`, el `ppp` configurat. Implementar una funció petita que modifiqui els bytes de la capçalera, o la insereixi si no hi és.
 - Sense metadades EXIF (cap dada de l'equip ni de geolocalització).
-- Mida orientativa: 150–400 KB amb una càmera 1080p a qualitat 0,92 (amb mida «fixa» 413 × 531, < 300 KB). El Forms admet fitxers grans.
+- Qualitat JPEG per defecte 1 (màxima, D19), sense recomprimir: mida orientativa d'1–3 MB amb una càmera 4K (840 × 1080 amb 1080p, uns 0,5–1 MB). El Forms admet fitxers grans.
 
 ### RF-09 Selecció
 - Segons P4. La foto triada és l'única que es manté. Les altres s'alliberen immediatament (RF-16).
@@ -409,7 +409,7 @@ foto-carnet-bombers/
 {
   "matriculaRegex": "^[0-9]{4,6}$",
   "maxFotos": 3,
-  "sortida": { "ppp": 300, "mida": "original", "alcadaMaxPx": 2160, "qualitatJpeg": 0.92, "enquadrament": "visor",
+  "sortida": { "ppp": 300, "mida": "original", "alcadaMaxPx": 16384, "qualitatJpeg": 1, "enquadrament": "visor",
                "alcadaCapMm": 34, "margeSuperiorMm": 4 },
   "forms": { "urlPlantilla": "https://forms.office.com/Pages/ResponsePage.aspx?id=XXXX&rYYYY={MATRICULA}" },
   "captura": { "segonsEstableAbansCompte": 1, "compteEnrere": 3 },
@@ -570,6 +570,7 @@ Esquelet:
 | D7 | Identitat gràfica: escut de Bombers en color + segell històric (manual p. 5), signatura de l'Ajuntament (negre i vermell), sense logos 080 (§6) |
 | D17 | **Enquadrament de la foto final** (21/11/2026, després de provar-ho al Surface): per defecte és exactament el que es veu al visor de P3 (rectangle 35:45 centrat, amb cap, espatlles i part del polo), no el retall RF-07 amb el cap a 34/45 mm. El retall RF-07 es manté com a opció (`sortida.enquadrament: "cap"`). Llindar 5.3 i silueta guia adaptats; a calibrar |
 | D18 | **Resolució original** (22/11/2026): la foto desada té la resolució original de la càmera, sense reescalar (`sortida.mida: "original"`), perquè serveixi per a més usos que el carnet; mínim 413 × 531 px i màxim `alcadaMaxPx` (2160) d'alçada; densitat JFIF calculada per a 35 × 45 mm. El comportament anterior (`midaSortida(ppp)`) es manté com a `"fixa"`. Substitueix D5 |
+| D19 | **Sense reduir ni comprimir** (26/11/2026): la foto es retalla a 35:45 sobre el fotograma original i es desa sense reescalar (`alcadaMaxPx` 16384, càmera demanada a 3840 × 2160) i amb qualitat JPEG màxima (`qualitatJpeg` 1). A P4 cada foto té una lupa per veure-la en gran abans de triar-la |
 | D16 | Configuració fixada en compilar (`config/config.json`); canviar-la implica una versió nova |
 
 ### Pendents
@@ -598,7 +599,7 @@ Esquelet:
 
 - [ ] Un bomber sense ajuda pot completar el procés en < 5 min a partir de les instruccions, des de l'enllaç fins a l'enviament del Forms.
 - [ ] L'aplicació és **un sol fitxer HTML** que funciona amb doble clic a l'Edge dels equips corporatius, sense instal·lar res i sense permisos d'administrador.
-- [ ] El fitxer desat es diu exactament `{matricula}.jpg`, fa 35:45, té la resolució original de la càmera (o la fixa configurada, mínim 413 × 531 px, màxim `alcadaMaxPx`) i densitat JFIF correcta per a 35 × 45 mm.
+- [ ] El fitxer desat es diu exactament `{matricula}.jpg`, fa 35:45, té la resolució original de la càmera (o la fixa configurada, mínim 413 × 531 px, sense màxim pràctic) i densitat JFIF correcta per a 35 × 45 mm.
 - [ ] La foto és el que es veu al visor de P3 (enquadrament «visor», per defecte); amb enquadrament «cap», el cap ocupa ~75% de l'alçada (±5%) i està centrat.
 - [ ] L'aplicació no fa **cap petició de xarxa** fins que l'usuari obre el Forms (comprovat a les eines de desenvolupador), i la guarda de build passa.
 - [ ] No queda cap dada a l'emmagatzematge del navegador després del procés.

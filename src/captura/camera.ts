@@ -54,7 +54,7 @@ export function classificaErrorCamera(error: unknown): TipusErrorCamera {
  * `facingMode`).
  */
 export function restriccionsCamera(deviceId?: string): MediaStreamConstraints {
-  const base = { width: { ideal: 1920 }, height: { ideal: 1080 } };
+  const base = { width: { ideal: 3840 }, height: { ideal: 2160 } };
   return {
     video: deviceId ? { ...base, deviceId: { exact: deviceId } } : { ...base, facingMode: { ideal: 'environment' } },
     audio: false

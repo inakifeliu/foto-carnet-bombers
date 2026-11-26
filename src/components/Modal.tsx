@@ -10,6 +10,8 @@ export interface IModalProps {
   retornaFocusA?: () => HTMLElement | undefined;
   /** Text del botó de tancar (per defecte «Tancar»). */
   textTancar?: string;
+  /** Diàleg més ample (per exemple, per veure una foto en gran). */
+  ample?: boolean;
   children?: React.ReactNode;
 }
 
@@ -17,7 +19,7 @@ const FOCALITZABLES =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /** Diàleg modal accessible: aria-modal, focus atrapat, Esc per tancar i retorn del focus. */
-export const Modal: React.FC<IModalProps> = ({ titol, onTancar, retornaFocusA, textTancar, children }) => {
+export const Modal: React.FC<IModalProps> = ({ titol, onTancar, retornaFocusA, textTancar, ample, children }) => {
   const dialeg = React.useRef<HTMLDivElement>(null);
   const retornaFocusRef = React.useRef(retornaFocusA);
   retornaFocusRef.current = retornaFocusA;
@@ -68,7 +70,7 @@ export const Modal: React.FC<IModalProps> = ({ titol, onTancar, retornaFocusA, t
   return (
     <div className={styles.modalFons}>
       <div
-        className={styles.modal}
+        className={ample ? `${styles.modal} ${styles.modalAmple}` : styles.modal}
         role="dialog"
         aria-modal="true"
         aria-labelledby={idTitol}

@@ -64,7 +64,7 @@ export interface IConfig {
     ppp: number;
     /** «original» (per defecte): el retall es desa a la resolució de la càmera, sense reescalar; «fixa»: sempre `midaSortida(ppp)`. */
     mida: MidaSortida;
-    /** Alçada màxima en píxels amb «original» (càmeres 4K o superiors es redueixen a aquesta alçada mantenint 35:45). */
+    /** Alçada màxima en píxels amb «original» (per defecte 16384, el màxim admès: a la pràctica, cap reducció). */
     alcadaMaxPx: number;
     qualitatJpeg: number;
     /** «visor» (per defecte): la foto és exactament el que es veu al visor de P3; «cap»: retall RF-07 (cap = alcadaCapMm). */

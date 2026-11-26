@@ -20,6 +20,8 @@
   --color-gris-sense-dades: #767676;
   --color-cortina: rgba(0, 0, 0, 0.55);
   --color-ombra-text: rgba(0, 0, 0, 0.8);
+  --color-boto-lupa: rgba(0, 0, 0, 0.65);
+  --color-boto-lupa-hover: rgba(0, 0, 0, 0.85);
   --font-bombers: 'ITC Franklin Gothic Std', 'Franklin Gothic Medium', 'Franklin Gothic', Arial, sans-serif;
 
   box-sizing: border-box;
@@ -510,6 +512,7 @@
 }
 
 .miniaturaMarc {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -529,6 +532,40 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.botoLupa {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 2px solid var(--bcn-blanc);
+  border-radius: 50%;
+  background: var(--color-boto-lupa);
+  color: var(--bcn-blanc);
+  cursor: pointer;
+}
+
+.botoLupa:hover {
+  background: var(--color-boto-lupa-hover);
+}
+
+.botoLupa:focus-visible {
+  outline: 3px solid var(--bcn-vermell);
+  outline-offset: 2px;
+}
+
+.fotoGran {
+  display: block;
+  max-width: 100%;
+  max-height: calc(90vh - 200px);
+  margin: 0 auto;
+  object-fit: contain;
 }
 
 .fotoItemPetit {
@@ -562,6 +599,10 @@
   color: var(--color-text);
   border-radius: 4px;
   outline: none;
+}
+
+.modalAmple {
+  max-width: min(960px, 100%);
 }
 
 .titolModal {
