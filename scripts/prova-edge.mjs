@@ -236,7 +236,7 @@ try {
       `(() => { const i = document.querySelector('#fc-matricula'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i, ${JSON.stringify(valor)}); i.dispatchEvent(new Event('input', {bubbles:true})); return i.value; })()`
     );
   /** Espera fins que el vídeo tingui fotograma; si la càmera falla en arrencar, prem «Tornar a provar». */
-  // Mida esperada de la foto desada (sortida.mida = «original», alcadaMaxPx 2160): el rectangle del visor (35:45 el
+  // Mida esperada de la foto desada (sortida.mida = «original», alcadaMaxPx 16384): el rectangle del visor (35:45 el
   // més gran possible, centrat) a la seva mida en píxels, amb mínim 413x531, i ppp = round(alt / (45 / 25,4)).
   let camera = { w: 0, h: 0 };
   const midaCamera = async () => {
@@ -248,7 +248,7 @@ try {
   const esperat = () => {
     const { w: cw, h: ch } = camera;
     let h = cw * 45 >= ch * 35 ? ch : Math.round((cw * 45) / 35);
-    h = Math.max(531, Math.min(h, 2160));
+    h = Math.max(531, Math.min(h, 16384));
     return { w: Math.max(413, Math.round((h * 35) / 45)), h, ppp: Math.round(h / (45 / 25.4)) };
   };
   const esperaVideo = async () => {
@@ -782,7 +782,7 @@ try {
     }
     ok('JPEG: cap segment APP1/EXIF', des && !des.app1, des?.marcadors.join(','));
     console.log(`   (JPEG desat: ${des?.mida} bytes, ${des?.w}x${des?.h})`);
-    ok('JPEG: mida raonable (< 1,5 MB)', des && des.mida < 1.5 * 1024 * 1024, des && String(des.mida));
+    ok('JPEG: mida raonable (< 10 MB, qualitat màxima)', des && des.mida < 10 * 1024 * 1024, des && String(des.mida));
     await esperaCondicio(`document.querySelector('h1')?.textContent === 'Puja la foto al formulari'`);
     ok('P6 després de desar', (await h1()) === 'Puja la foto al formulari', await h1());
     const p6 = await text();

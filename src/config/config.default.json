@@ -4,8 +4,8 @@
   "sortida": {
     "ppp": 300,
     "mida": "original",
-    "alcadaMaxPx": 2160,
-    "qualitatJpeg": 0.92,
+    "alcadaMaxPx": 16384,
+    "qualitatJpeg": 1,
     "enquadrament": "visor",
     "alcadaCapMm": 34,
     "margeSuperiorMm": 4,

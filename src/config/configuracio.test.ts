@@ -36,7 +36,7 @@ describe('resolConfig', () => {
     expect(r.config.forms.urlPlantilla).toBe('https://x/{MATRICULA}');
     expect(r.config.matriculaRegex).toBe('^[0-9]{5}$');
     expect(r.config.sortida.ppp).toBe(600);
-    expect(r.config.sortida.qualitatJpeg).toBe(0.92);
+    expect(r.config.sortida.qualitatJpeg).toBe(1);
     expect(r.config.llindars.yawMax).toBe(12);
     expect(r.config.llindars.rollMax).toBe(5);
     expect(r.config.maxFotos).toBe(2);
@@ -133,13 +133,13 @@ describe('resolConfig: validació de la configuració fusionada', () => {
     });
   });
 
-  it('sortida.alcadaMaxPx: per defecte 2160; ha de ser un enter ≥ alçada mínima i ≤ 16384', () => {
-    expect(CONFIG_PER_DEFECTE.sortida.alcadaMaxPx).toBe(2160);
+  it('sortida.alcadaMaxPx: per defecte 16384 (sense límit pràctic); ha de ser un enter ≥ alçada mínima i ≤ 16384', () => {
+    expect(CONFIG_PER_DEFECTE.sortida.alcadaMaxPx).toBe(16384);
     expect(avis('{"sortida":{"alcadaMaxPx":1080}}').config.sortida.alcadaMaxPx).toBe(1080);
     expect(avis('{"sortida":{"alcadaMaxPx":1080}}').avisos).toEqual([]);
     ['"x"', '100.5', '400', '99999', '0'].forEach((v) => {
       const r = avis(`{"sortida":{"alcadaMaxPx":${v}}}`);
-      expect(r.config.sortida.alcadaMaxPx).toBe(2160);
+      expect(r.config.sortida.alcadaMaxPx).toBe(16384);
       expect(r.avisos).toEqual([{ codi: 'valorInvalid', camp: 'sortida.alcadaMaxPx' }]);
     });
     // Amb 600 ppp el mínim és 1063.

@@ -46,13 +46,13 @@ describe('classificaErrorCamera', () => {
 describe('restriccionsCamera', () => {
   it('per defecte: ideal 1920×1080 i facingMode environment ideal (RF-01)', () => {
     expect(restriccionsCamera()).toEqual({
-      video: { width: { ideal: 1920 }, height: { ideal: 1080 }, facingMode: { ideal: 'environment' } },
+      video: { width: { ideal: 3840 }, height: { ideal: 2160 }, facingMode: { ideal: 'environment' } },
       audio: false
     });
   });
   it('amb deviceId: aquella càmera concreta, sense facingMode', () => {
     expect(restriccionsCamera('abc')).toEqual({
-      video: { width: { ideal: 1920 }, height: { ideal: 1080 }, deviceId: { exact: 'abc' } },
+      video: { width: { ideal: 3840 }, height: { ideal: 2160 }, deviceId: { exact: 'abc' } },
       audio: false
     });
   });

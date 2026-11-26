@@ -3,6 +3,7 @@ import { useApp } from '../app/AppContext';
 import type { IFoto } from '../captura/fotos';
 import { Boto } from '../components/Boto';
 import { Miniatura } from '../components/Miniatura';
+import { Modal } from '../components/Modal';
 import { t } from '../i18n';
 import { Titol } from '../components/Titol';
 import styles from '../styles/brand.module.css';
@@ -24,6 +25,18 @@ export const P4Seleccio: React.FC = () => {
   const { fotos, dispatch, alliberaFotos } = useApp();
   const millor = indexMillorFoto(fotos);
   const hiHaPuntuacio = fotos.some((f) => f.puntuacio !== undefined);
+  /** Índex de la foto que es veu en gran (lupa); null si no n'hi ha cap. */
+  const [ampliada, setAmpliada] = React.useState<number | null>(null);
+  const fotoAmpliada = ampliada === null ? undefined : fotos[ampliada];
+
+  const tria = (foto: IFoto): void => {
+    // RF-09: la triada és l'única que es manté; les altres s'alliberen immediatament. Amb una sola
+    // foto a la llista, el seu índex passa a ser 0 (també en tornar enrere des de P5).
+    setAmpliada(null);
+    alliberaFotos(foto.id);
+    dispatch({ tipus: 'TRIA_FOTO', index: 0 });
+    dispatch({ tipus: 'ENDAVANT' });
+  };
 
   // La foto de més puntuació ve preseleccionada.
   React.useEffect(() => {
@@ -39,7 +52,13 @@ export const P4Seleccio: React.FC = () => {
           const recomanada = hiHaPuntuacio && i === millor && fotos.length > 1;
           return (
             <li key={foto.id} className={styles.fotoItem}>
-              <Miniatura etiqueta={t('p4.foto', { n: i + 1 })} src={foto.url} seleccionada={recomanada}>
+              <Miniatura
+                etiqueta={t('p4.foto', { n: i + 1 })}
+                src={foto.url}
+                seleccionada={recomanada}
+                onAmplia={() => setAmpliada(i)}
+                etiquetaAmplia={t('p4.veureGran', { n: i + 1 })}
+              >
                 <p className={styles.puntuacio}>
                   {foto.puntuacio === undefined ? t('p4.senseAnalisi') : t('p4.puntuacio', { punts: foto.puntuacio })}
                 </p>
@@ -57,17 +76,7 @@ export const P4Seleccio: React.FC = () => {
                   </ul>
                 )}
               </Miniatura>
-              <Boto
-                onClick={() => {
-                  // RF-09: la triada és l'única que es manté; les altres s'alliberen immediatament. Amb una sola
-                  // foto a la llista, el seu índex passa a ser 0 (també en tornar enrere des de P5).
-                  alliberaFotos(foto.id);
-                  dispatch({ tipus: 'TRIA_FOTO', index: 0 });
-                  dispatch({ tipus: 'ENDAVANT' });
-                }}
-              >
-                {t('p4.triar')}
-              </Boto>
+              <Boto onClick={() => tria(foto)}>{t('p4.triar')}</Boto>
             </li>
           );
         })}
@@ -85,6 +94,19 @@ export const P4Seleccio: React.FC = () => {
           {t('p4.repetir')}
         </Boto>
       </div>
+      {ampliada !== null && fotoAmpliada && (
+        <Modal titol={t('p4.fotoGran', { n: ampliada + 1 })} onTancar={() => setAmpliada(null)} ample>
+          <img src={fotoAmpliada.url} alt={t('p4.foto', { n: ampliada + 1 })} className={styles.fotoGran} />
+          <p className={styles.puntuacio}>
+            {fotoAmpliada.puntuacio === undefined
+              ? t('p4.senseAnalisi')
+              : t('p4.puntuacio', { punts: fotoAmpliada.puntuacio })}
+          </p>
+          <div className={styles.accions}>
+            <Boto onClick={() => tria(fotoAmpliada)}>{t('p4.triarGran')}</Boto>
+          </div>
+        </Modal>
+      )}
     </section>
   );
 };

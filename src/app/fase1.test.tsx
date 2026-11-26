@@ -154,7 +154,7 @@ describe('P3: càmera activa', () => {
     const { div, root } = monta(3);
     await act(async () => {});
     expect(getUserMedia).toHaveBeenCalledWith({
-      video: { width: { ideal: 1920 }, height: { ideal: 1080 }, facingMode: { ideal: 'environment' } },
+      video: { width: { ideal: 3840 }, height: { ideal: 2160 }, facingMode: { ideal: 'environment' } },
       audio: false
     });
     expect(div.querySelectorAll('#fc-camera option')).toHaveLength(2);
@@ -173,7 +173,7 @@ describe('P3: càmera activa', () => {
     expect(stopA).toHaveBeenCalledTimes(1);
     expect(stopB).not.toHaveBeenCalled();
     expect(getUserMedia).toHaveBeenLastCalledWith({
-      video: { width: { ideal: 1920 }, height: { ideal: 1080 }, deviceId: { exact: 'b' } },
+      video: { width: { ideal: 3840 }, height: { ideal: 2160 }, deviceId: { exact: 'b' } },
       audio: false
     });
 

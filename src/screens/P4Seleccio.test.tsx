@@ -170,3 +170,37 @@ describe('P4: alliberament de fotos (RF-09, RF-16)', () => {
     await act(async () => root.unmount());
   });
 });
+
+describe('P4: lupa per veure la foto en gran', () => {
+  it('cada foto té un botó de lupa que obre la foto en gran; «Tancar» torna a la llista', async () => {
+    const { div, root } = await monta([foto(1, 50), foto(2, 80)]);
+    const lupes = Array.from(div.querySelectorAll<HTMLButtonElement>('button[data-lupa]'));
+    expect(lupes).toHaveLength(2);
+    expect(lupes[1].getAttribute('aria-label')).toBe(t('p4.veureGran', { n: 2 }));
+    await act(async () => lupes[1].click());
+    const dialeg = document.querySelector('[role="dialog"]');
+    expect(dialeg).not.toBeNull();
+    expect(dialeg?.textContent).toContain(t('p4.fotoGran', { n: 2 }));
+    expect(dialeg?.querySelector('img')?.getAttribute('src')).toBe('blob:foto-2');
+    expect(dialeg?.textContent).toContain(t('p4.puntuacio', { punts: 80 }));
+    const tancar = Array.from(dialeg!.querySelectorAll('button')).find((b) => b.textContent === t('nav.tancar'));
+    await act(async () => tancar!.click());
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(div.querySelector('h1')?.textContent).toBe(t('p4.titol'));
+    await act(async () => root.unmount());
+  });
+
+  it('des de la foto en gran es pot triar directament', async () => {
+    const fotos = [foto(1, 50), foto(2, 80)];
+    const { div, root } = await monta(fotos);
+    await act(async () => div.querySelectorAll<HTMLButtonElement>('button[data-lupa]')[0].click());
+    const dialeg = document.querySelector('[role="dialog"]')!;
+    const triar = Array.from(dialeg.querySelectorAll('button')).find((b) => b.textContent === t('p4.triarGran'));
+    await act(async () => triar!.click());
+    expect(div.querySelector('h1')?.textContent).toBe(t('p5.titol'));
+    expect(div.querySelector('main img')?.getAttribute('src')).toBe('blob:foto-1');
+    expect(fotos[1].canvas.width).toBe(0);
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    await act(async () => root.unmount());
+  });
+});
